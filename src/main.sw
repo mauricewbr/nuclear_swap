@@ -1,14 +1,14 @@
 contract;
 
-use swapMath::abs;
+use swapMath::abs; // needs to be added
 use std::token::{mint_to_address, burn};
 
 abi NuclearSwap {
     fn _mint(amount: u64, recipient: Address); // same as mint_to_address: 
     fn _burn(amount: u64); // misses from: ContractId???
-    fn _xp() -> u64; // misses array structure
-    fn _getD(xp: u64) -> u64; // misses xp return array structure
-
+    fn _xp() -> [u64, 2]; // Missing return array
+    fn _getD(xp: [u64, 2]) -> u64; // N = 2
+    fn _getY(i: u64, j: u64, x: u64, N: [u64, 2]) -> u64; // N = 2
 }
 
 impl NuclearSwap for Contract {
@@ -21,19 +21,19 @@ impl NuclearSwap for Contract {
     }
 
     fn _xp() {
-        while counter < ??? { // missing
-            // xp[i] = balances[i] * multipliers[i];
+        while counter < N { // N = 2
+            xp[counter] = balances[counter] * multipliers[counter];
             counter = counter + 1;
         }
     }
 
-    fn _getD(xp: u64) -> u64 {
+    fn _getD(xp: [u64, 2]) -> u64 {
         // N: Number of tokens
         // A: Amplification coefficient multiplied by N^(N-1)
         let a: u64 = A * N;
         let s: u64;
-        while counter < ??? { // missing
-            // s = s + xp[i]
+        while counter < N {
+            s = s + xp[counter];
             counter = counter + 1;
         }
 
