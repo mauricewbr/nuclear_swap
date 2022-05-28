@@ -26,7 +26,7 @@ storage {
     SWAP_FEE: u64,
     LIQUIDITY_FEE: u64,
     FEE_DENOMINATOR: u64,
-    lp_token_supply: u64
+    lp_token_supply: u64,
 }
 
 // Token ID of Ether
@@ -45,7 +45,7 @@ const MINIMUM_LIQUIDITY = 1; //A more realistic value would be 1000000000;
 // const DECIMALS: u64 = 10**18;
 
 abi NuclearSwap {
-    // fn _mint(amount: u64, recipient: Address); // same as mint_to_address: 
+    // fn _mint(amount: u64, recipient: Address); // same as mint_to_address:
     // fn _burn(amount: u64); // misses from: ContractId???
     // fn _xp(N: u64, xp: [u64;2], balances: [u64; 2], multipliers: [u64; 2]) -> [u64; 2]; // Missing return array
     // fn _getD(N: u64, A: u64, xp: [u64; 2]) -> u64; // N = 2
@@ -54,7 +54,7 @@ abi NuclearSwap {
     fn deposit();
     fn withdraw(amount: u64, asset_id: ContractId);
     fn getVirtualPrice() -> u64;
-    fn swap(i: u64, j:u64, dx: u64, minDy: u64) -> u64;
+    fn swap(i: u64, j: u64, dx: u64, minDy: u64) -> u64;
     fn add_liquidity(min_liquidity: u64, deadline: u64) -> u64;
 }
 
@@ -93,28 +93,30 @@ impl NuclearSwap for Contract {
     }
 
     fn getVirtualPrice() -> u64 {
-        let xp: [u64; 2] = [storage.xpX, storage.xpY];
+        let xp: [u64;
+        2] = [storage.xpX, storage.xpY];
         let d: u64 = _getD(xp);
         let _totalSupply: u64 = storage.totalSupply;
-        if  _totalSupply > 0 {
-            (d*exp(10,18)) / _totalSupply
+        if _totalSupply > 0 {
+            (d * exp(10, 18)) / _totalSupply
         } else {
             0
         }
     }
 
-    fn swap(i: u64, j:u64, dx: u64, minDy: u64) -> u64 {
+    fn swap(i: u64, j: u64, dx: u64, minDy: u64) -> u64 {
         assert(i != j);
         let asset_id = msg_asset_id().into();
         let fowarded_amount = msg_amount();
         let sender = get_msg_sender_address_or_panic();
-        
+
         // TO DO: IERC20(tokens[i]).transferFrom(msg.sender, address(this), dx);
 
         let x: u64 = storage.xpX + dx * storage.multiplierX;
-        
+
         let y0: u64 = storage.xpY;
-        let xp: [u64; 2] = [storage.xpX, storage.xpY];
+        let xp: [u64;
+        2] = [storage.xpX, storage.xpY];
         let y1: u64 = _getY(i, j, x, xp);
         // y0 must be >= y1, since x has increased
         // -1 to round down
@@ -131,8 +133,7 @@ impl NuclearSwap for Contract {
         storage.balanceY = storage.balanceY + dy;
         // TO DO: IERC20(tokens[j]).transfer(msg.sender, dy);
 
-        let dummy: u64 = 1;
-        dummy
+        dy
     }
 
     fn add_liquidity(min_liquidity: u64, deadline: u64) -> u64 {
@@ -145,7 +146,7 @@ impl NuclearSwap for Contract {
 
         let eth_amount_key = key_deposits(sender, ETH_ID);
         let current_eth_amount = get::<u64>(eth_amount_key);
-        
+
         let token_amount_key = key_deposits(sender, TOKEN_ID);
         let current_token_amount = get::<u64>(token_amount_key);
 
@@ -164,7 +165,7 @@ impl NuclearSwap for Contract {
 
             // if token ratio is correct, proceed with adding liquidity
             // if token ratio is incorrect, return user balances to contract
-            if(current_token_amount >= token_amount) {
+            if (current_token_amount >= token_amount) {
                 add_reserve(TOKEN_ID, token_amount);
                 add_reserve(ETH_ID, current_eth_amount);
 
@@ -196,7 +197,7 @@ impl NuclearSwap for Contract {
             // Mint the LP token
             mint(initial_liquidity);
             storage.lp_token_supply = initial_liquidity;
-            
+
             // Transfering LP token to user balance
             transfer_to_output(initial_liquidity, contract_id(), sender);
             minted = initial_liquidity;
@@ -210,8 +211,8 @@ impl NuclearSwap for Contract {
     }
 }
 
-fn exp (base: u64, exponent: u64) -> u64 {
-    asm (r1, r2: base, r3: exponent) {
+fn exp(base: u64, exponent: u64) -> u64 {
+    asm(r1, r2: base, r3: exponent) {
         exp r1 r2 r3;
         r1: u64
     }
@@ -237,12 +238,13 @@ fn _xp(N: u64, xp: [u64; 2], balances: [u64; 2], multipliers: [u64; 2]) {
 }
 */
 
-fn _getYD(i: u64, xp: [u64; 2], d: u64) -> u64 {
+fn _getYD(i: u64, xp: [u64;
+2], d: u64) -> u64 {
     let N: u64 = storage.N;
-   
+
     let mut s: u64 = 0;
     let mut c: u64 = d;
-    let A: u64 = (1000 * (exp(N,N-1)));
+    let A: u64 = (1000 * (exp(N, N - 1)));
     // following A needs to be replaced by commented A
     // let A: u64 = (1000 * N);
     let a: u64 = A * N;
@@ -268,18 +270,19 @@ fn _getYD(i: u64, xp: [u64; 2], d: u64) -> u64 {
     while counter_j < 255 && break_early == false {
         y_prev = y;
         y = (y * y + c) / (2 * y + b - d);
-        if abs(y , y_prev) <= 1 {
+        if abs(y, y_prev) <= 1 {
             break_early = true;
         };
     }
     y
 }
 
-fn _getY(i: u64, j: u64, x: u64, xp: [u64; 2]) -> u64 {
+fn _getY(i: u64, j: u64, x: u64, xp: [u64;
+2]) -> u64 {
     // let A: u64 = (1000 * (N**(N-1)));
     // following A needs to be replaced by commented A
     let N: u64 = storage.N;
-    let A: u64 = (1000 * (exp(N,N-1)));
+    let A: u64 = (1000 * (exp(N, N - 1)));
     let a: u64 = A * N;
     let d: u64 = _getD(xp);
     // uint s;
@@ -287,7 +290,7 @@ fn _getY(i: u64, j: u64, x: u64, xp: [u64; 2]) -> u64 {
     let mut s: u64 = 0;
     let mut _x: u64 = 0;
     let mut counter_i: u64 = 0;
-    while counter_i < N{
+    while counter_i < N {
         if counter_i == i {
             _x = x;
             s = s + _x;
@@ -310,25 +313,26 @@ fn _getY(i: u64, j: u64, x: u64, xp: [u64; 2]) -> u64 {
     let mut y: u64 = d;
     let mut counter_j: u64 = 0;
     let mut break_early = false;
-    while counter_j < 255 && break_early == false{
+    while counter_j < 255 && break_early == false {
         y_prev = y;
         y = (y * y + c) / (2 * y + b - d);
-        if abs(y , y_prev) <= 1{
+        if abs(y, y_prev) <= 1 {
             break_early = true;
         };
     }
-    y
-    // revert("y didn't converge");
+    y // revert("y didn't converge");
 }
 
-fn _getD(xp: [u64; 2]) -> u64 {
+fn _getD(xp: [u64;
+2]) -> u64 {
     // N: Number of tokens
     // A: Amplification coefficient multiplied by N^(N-1)
     let N: u64 = storage.N;
-    let A: u64 = (1000 * (exp(N,N-1)));
+    let A: u64 = (1000 * (exp(N, N - 1)));
     let a: u64 = A * N;
     let mut i = 0;
-    let xp: [u64; 2] = [storage.xpX, storage.xpY]; 
+    let xp: [u64;
+    2] = [storage.xpX, storage.xpY];
     let mut s: u64 = xp[0];
     while i < N {
         s = s + xp[i];
@@ -339,7 +343,7 @@ fn _getD(xp: [u64; 2]) -> u64 {
     let mut i = 0;
     let mut j = 0;
     let mut break_early = false;
-    while i < 255  && break_early == false{
+    while i < 255 && break_early == false {
         let mut p: u64 = d;
         while j < N {
             p = (p * d) / (N * xp[j]);
@@ -348,13 +352,12 @@ fn _getD(xp: [u64; 2]) -> u64 {
         let d_prev: u64 = d;
         d = ((a * s + N * p) * d) / ((a - 1) * d + (N + 1) * p);
 
-        if abs(d, d_prev) <= 1{
+        if abs(d, d_prev) <= 1 {
             break_early = true;
         }
         i = i + 1;
     }
-    d
-    // Revert("D didn't converge");
+    d // Revert("D didn't converge");
 }
 
 // Return the sender as an Address or panic
