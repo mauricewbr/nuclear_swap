@@ -44,6 +44,11 @@ const MINIMUM_LIQUIDITY = 1; //A more realistic value would be 1000000000;
 
 // const DECIMALS: u64 = 10**18;
 
+pub struct RemoveLiquidityReturn {
+    eth_amount: u64,
+    token_amount: u64,
+}
+
 abi NuclearSwap {
     /// Return the current balance of given token on the contract
     fn get_balance(token: ContractId) -> u64;
@@ -60,6 +65,7 @@ abi NuclearSwap {
     fn getVirtualPrice() -> u64;
     fn swap(i: u64, j:u64, dx: u64, minDy: u64) -> u64;
     fn add_liquidity(min_liquidity: u64, deadline: u64) -> u64;
+    fn remove_liquidity(min_eth: u64, min_tokens: u64, deadline: u64) -> RemoveLiquidityReturn;
 }
 
 /// Compute the storage slot for an address's deposits.
@@ -68,6 +74,10 @@ fn key_deposits(a: Address, asset_id: b256) -> b256 {
     sha256((S_DEPOSITS, inner))
 }
 
+fn remove_reserve(token_id: b256, amount: u64) {
+    let value = get::<u64>(token_id);
+    store(token_id, value - amount);
+}
 
 fn get_msg_sender_address_or_panic() -> Address {
     let result: Result<Sender, AuthError> = msg_sender();
@@ -241,7 +251,45 @@ impl NuclearSwap for Contract {
 
         minted
     }
+
+    fn remove_liquidity(min_eth: u64, min_tokens: u64, deadline: u64) -> RemoveLiquidityReturn {
+        assert(msg_amount() > 0);
+        assert(msg_asset_id().into() == (contract_id()).into());
+        assert(deadline > height());
+        assert(min_eth > 0 && min_tokens > 0);
+
+        let sender = get_msg_sender_address_or_panic();
+
+        let total_liquidity = storage.lp_token_supply;
+        assert(total_liquidity > 0);
+
+        let eth_reserve = get_current_reserve(ETH_ID);
+        let token_reserve = get_current_reserve(TOKEN_ID);
+        let eth_amount = (msg_amount() * eth_reserve) / total_liquidity;
+        let token_amount = (msg_amount() * token_reserve) / total_liquidity;
+
+        assert((eth_amount >= min_eth) && (token_amount >= min_tokens));
+
+        burn(msg_amount());
+        storage.lp_token_supply = total_liquidity - msg_amount();
+
+        // Add fund to the reservers
+        remove_reserve(TOKEN_ID, token_amount);
+        remove_reserve(ETH_ID, eth_amount);
+        // Send tokens back
+        transfer_to_output(eth_amount, ~ContractId::from(ETH_ID), sender);
+        transfer_to_output(token_amount, ~ContractId::from(TOKEN_ID), sender);
+
+        RemoveLiquidityReturn {
+            eth_amount: eth_amount,
+            token_amount: token_amount,
+        }
+    }
+
 }
+
+
+
 
 fn exp (base: u64, exponent: u64) -> u64 {
     asm (r1, r2: base, r3: exponent) {
