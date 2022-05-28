@@ -26,13 +26,22 @@ async fn contract() {
     );
     
 
-    let native_asset_id = ContractId::new(*NATIVE_ASSET_ID);
-
-        // Check contract balance
-    let response = exchange_instance
-        .getVirtualPrice()
-        //.call_params(CallParameters::new(Some(11), None))
+    exchange_instance
+        .deposit()
+        .call_params(CallParameters::new(Some(11), None))
         .call()
         .await
         .unwrap();
+
+    // Native asset id
+    let native_asset_id = ContractId::new(*NATIVE_ASSET_ID);
+
+    // Check contract balance
+    let response = exchange_instance
+        .get_balance(native_asset_id.clone())
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(response.value, 11);
+
 }

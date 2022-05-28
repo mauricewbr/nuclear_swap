@@ -45,6 +45,10 @@ const MINIMUM_LIQUIDITY = 1; //A more realistic value would be 1000000000;
 // const DECIMALS: u64 = 10**18;
 
 abi NuclearSwap {
+        /// Return the current balance of given token on the contract
+    fn get_balance(token: ContractId) -> u64;
+    /// Deposit coins for later adding to liquidity pool.
+    fn deposit();
     // fn _mint(amount: u64, recipient: Address); // same as mint_to_address: 
     // fn _burn(amount: u64); // misses from: ContractId???
     // fn _xp(N: u64, xp: [u64;2], balances: [u64; 2], multipliers: [u64; 2]) -> [u64; 2]; // Missing return array
@@ -55,7 +59,50 @@ abi NuclearSwap {
     fn add_liquidity(min_liquidity: u64, deadline: u64) -> u64;
 }
 
+/// Compute the storage slot for an address's deposits.
+fn key_deposits(a: Address, asset_id: b256) -> b256 {
+    let inner = sha256((a.into(), asset_id));
+    sha256((S_DEPOSITS, inner))
+}
+
+
+fn get_msg_sender_address_or_panic() -> Address {
+    let result: Result<Sender, AuthError> = msg_sender();
+    let mut ret = ~Address::from(0x0000000000000000000000000000000000000000000000000000000000000000);
+    if result.is_err() {
+        revert(0);
+    } else {
+        let unwrapped = result.unwrap();
+        if let Sender::Address(v) = unwrapped {
+            ret = v;
+        } else {
+            revert(0);
+        };
+    };
+
+    ret
+}
+
+
 impl NuclearSwap for Contract {
+    fn get_balance(token: ContractId) -> u64 {
+        let sender = get_msg_sender_address_or_panic();
+        let key = key_deposits(sender, token.into());
+        get::<u64>(key)
+    }
+
+    fn deposit() {
+        assert(msg_asset_id().into() == ETH_ID || msg_asset_id().into() == TOKEN_ID);
+
+        let sender = get_msg_sender_address_or_panic();
+
+        let key = key_deposits(sender, msg_asset_id().into());
+
+        let total_amount = get::<u64>(key) + msg_amount();
+        store(key, total_amount);
+    }
+
+
     fn getVirtualPrice() -> u64 {
         let xp: [u64; 2] = [storage.xpX, storage.xpY];
         let d: u64 = _getD(xp);
@@ -181,13 +228,13 @@ fn exp (base: u64, exponent: u64) -> u64 {
     }
 }
 
-fn _mint(amount: u64, recipient: Address) {
+/* fn _mint(amount: u64, recipient: Address) {
     mint_to_address(amount, recipient);
 }
 
 fn _burn(amount: u64) {
     burn(amount);
-}
+} */
 
 /*
 fn _xp(N: u64, xp: [u64; 2], balances: [u64; 2], multipliers: [u64; 2]) {
