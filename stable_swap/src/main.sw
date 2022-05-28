@@ -102,7 +102,7 @@ fn _getY(N: u64, i: u64, j: u64, x: u64, xp: [u64; 2]) -> u64 {
     while counter_j < 255 {
         y_prev = y;
         y = (y * y + c) / (2 * y + b - d);
-        if abs(y , y_prev) <= 1{
+        if abs(y , y_prev) <= 1 {
             y
         }
     }
