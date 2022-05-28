@@ -1,16 +1,22 @@
 contract;
 
 use ns_lib::abs; // needs to be added
-use std::address::Address;
-use std::token::{mint_to_address, burn};
-use std::storage::*;
-use std::math::*;
+// use std::address::Address;
+// use std::token::{mint_to_address, burn};
+// use std::storage::*;
+// use std::math::*;
+
+use std::{
+    address::Address,
+    token::{mint_to_address, burn},
+    storage::*,
+    math::*,
+    assert::assert
+};
 
 storage {
     totalSupply: u64
 }
-
-// const DECIMALS: u64 = 10**18;
 
 abi NuclearSwap {
     // fn _mint(amount: u64, recipient: Address); // same as mint_to_address: 
@@ -18,19 +24,31 @@ abi NuclearSwap {
     // fn _xp(N: u64, xp: [u64;2], balances: [u64; 2], multipliers: [u64; 2]) -> [u64; 2]; // Missing return array
     // fn _getD(N: u64, A: u64, xp: [u64; 2]) -> u64; // N = 2
     // fn _getY(N: u64, i: u64, j: u64, x: u64, xp: [u64; 2]) -> u64; // N = 2
-    fn getVirtualPrice(something: u64) -> u64;
+    fn getVirtualPrice() -> u64;
+    fn swap(i: u64, j:u64, dx: u64, minDy: u64) -> u64;
 }
 
 impl NuclearSwap for Contract {
-    fn getVirtualPrice(something: u64)-> u64 {
+    fn getVirtualPrice() -> u64 {
         let d: u64 = 10;//_getD(_xp());
-        // let _totalSupply: u64 = storage.totalSupply;
-        // if  _totalSupply > 0 {
-        //     (d*10^DECIMALS) / _totalSupply
-        // } else {
-        //     0
-        // }
-        Exponentiate(2,4)
+        let _totalSupply: u64 = storage.totalSupply;
+        if  _totalSupply > 0 {
+            (d*exp(10,18)) / _totalSupply
+        } else {
+            0
+        }
+    }
+
+    fn swap(i: u64, j:u64, dx: u64, minDy: u64) -> u64 {
+        assert(i != j);
+
+    }
+}
+
+fn exp (base: u64, exponent: u64) -> u64 {
+    asm (r1, r2: base, r3: exponent) {
+        exp r1 r2 r3;
+        r1: u64
     }
 }
 
