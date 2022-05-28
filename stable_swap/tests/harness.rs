@@ -44,4 +44,19 @@ async fn contract() {
         .unwrap();
     assert_eq!(response.value, 11);
 
+    exchange_instance
+        .withdraw(11, native_asset_id.clone())
+        .append_variable_outputs(1)
+        .call()
+        .await
+        .unwrap();
+
+    // Check contract balance
+    let response = exchange_instance
+        .get_balance(native_asset_id)
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(response.value, 0);
+
 }

@@ -49,6 +49,8 @@ abi NuclearSwap {
     fn get_balance(token: ContractId) -> u64;
     /// Deposit coins for later adding to liquidity pool.
     fn deposit();
+    /// Withdraw coins that have not been added to a liquidity pool yet.
+    fn withdraw(amount: u64, asset_id: ContractId);
     // fn _mint(amount: u64, recipient: Address); // same as mint_to_address: 
     // fn _burn(amount: u64); // misses from: ContractId???
     // fn _xp(N: u64, xp: [u64;2], balances: [u64; 2], multipliers: [u64; 2]) -> [u64; 2]; // Missing return array
@@ -100,6 +102,21 @@ impl NuclearSwap for Contract {
 
         let total_amount = get::<u64>(key) + msg_amount();
         store(key, total_amount);
+    }
+
+    fn withdraw(amount: u64, asset_id: ContractId) {
+        assert(asset_id.into() == ETH_ID || asset_id.into() == TOKEN_ID);
+
+        let sender = get_msg_sender_address_or_panic();
+
+        let key = key_deposits(sender, asset_id.into());
+        let deposited_amount = get::<u64>(key);
+        assert(deposited_amount >= amount);
+
+        let new_amount = deposited_amount - amount;
+        store(key, new_amount);
+
+        transfer_to_output(amount, asset_id, sender)
     }
 
 
