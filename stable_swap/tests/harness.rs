@@ -69,4 +69,17 @@ async fn contract() {
         .unwrap();
     assert_eq!(result.value, 10000);
 
+    //////////////////////////////////////////
+    // Start transferring and adding liquidity
+    //////////////////////////////////////////
+
+    // Transfer some alt tokens to the wallet
+    let address = wallet.address();
+    let _t = exchange_instance
+        .transfer_coins_to_output(50, exchange_contract_id.clone(), address.clone())
+        .append_variable_outputs(1)
+        .call()
+        .await
+        .unwrap();
+
 }
