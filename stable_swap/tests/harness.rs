@@ -82,4 +82,12 @@ async fn contract() {
         .await
         .unwrap();
 
+    // Check the balance of the contract of its own asset
+    let result = exchange_instance
+        .get_balance_asset(exchange_contract_id.clone(), exchange_contract_id.clone())
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(result.value, 10000 - 50);
+
 }
