@@ -6,6 +6,7 @@ use fuels::prelude::*;
 
 // Load abi from json
 abigen!(MyContract, "out/debug/stable_swap-abi.json");
+abigen!(MyToken, "../token/out/debug/token-abi.json");
 
 #[tokio::test]
 async fn contract() {

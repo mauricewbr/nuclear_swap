@@ -1,7 +1,6 @@
 contract;
 
 use std::{address::Address, context::balance_of, contract_id::ContractId, token::*};
-use token_abi::Token;
 
 abi Token {
     fn mint_coins(mint_amount: u64);
