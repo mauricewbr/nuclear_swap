@@ -40,6 +40,9 @@ fn _getYD(N: u64, i: u64, xp: [u64; 2], d: u64) -> u64 {
     let mut _x: u64 = 0;
     let mut s: u64 = 0;
     let mut c: u64 = 0;
+    // let A: u64 = (1000 * (N**(N-1)));
+    // following A needs to be replaced by commented A
+    let A: u64 = (1000 * N);
     let a: u64 = A * N;
     let mut counter_i: u64 = 0;
     while counter_i < N {
@@ -67,9 +70,11 @@ fn _getYD(N: u64, i: u64, xp: [u64; 2], d: u64) -> u64 {
 }
 
 fn _getY(N: u64, i: u64, j: u64, x: u64, xp: [u64; 2]) -> u64 {
+    // let A: u64 = (1000 * (N**(N-1)));
+    // following A needs to be replaced by commented A
+    let A: u64 = (1000 * N);
     let a: u64 = A * N;
-    //let xp: [u64; 2] = [1; 1000000000000];
-    let d: u64 = _getD(xp);
+    let d: u64 = _getD(N, A, xp);
     // uint s;
     let mut c: u64 = d;
     let mut s: u64 = 0;
@@ -98,7 +103,7 @@ fn _getY(N: u64, i: u64, j: u64, x: u64, xp: [u64; 2]) -> u64 {
         y_prev = y;
         y = (y * y + c) / (2 * y + b - d);
         if abs(y , y_prev) <= 1{
-            return y
+            y
         }
     }
     // revert("y didn't converge");
