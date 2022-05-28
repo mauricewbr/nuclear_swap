@@ -62,5 +62,7 @@ impl NuclearSwap for Contract {
         // Revert("D didn't converge");
     }
 
-    
+    fn _getY(i: u64, j: u64, x: u64, N: [u64; 2]) -> u64 {
+        
+    }
 }
