@@ -36,18 +36,72 @@ fn _xp(N: u64, xp: [u64; 2], balances: [u64; 2], multipliers: [u64; 2]) {
 }
 */
 
+fn _getYD(N: u64, i: u64, xp: [u64; 2], d: u64) -> (u64, u64, u64) {
+    let mut _x: u64 = 0;
+    let mut s: u64 = 0;
+    let mut c: u64 = 0;
+    let a: u64 = A * N;
+    let mut counter_i: u64 = 0;
+    while counter_i < N {
+        if counter_i != i {
+            _x = xp[counter_i];
+        }
+        s = s + _x;
+        c = (c * d) / (N * _x);
+        counter_i = counter_i + 1;
+    }
+    c = (c * d) / (N * a);
+    let b: u64 = s + d / a;
+
+    // Newton's method
+    let mut y_prev: u64 = 0;
+    let mut y: u64 = d;
+    let mut counter_j: u64 = 0;
+    while counter_j < 255 {
+        y_prev = y;
+        y = (y * y + c) / (2 * y + b - d);
+        if abs(y , y_prev) <= 1{
+            return y;
+        }
+    }
+}
+
 fn _getY(N: u64, i: u64, j: u64, x: u64, xp: [u64; 2]) -> u64 {
     let a: u64 = A * N;
     //let xp: [u64; 2] = [1; 1000000000000];
     let d: u64 = _getD(xp);
     // uint s;
-    let c: u64 = d;
-    let mut counter: u64 = 0;
-    while k < N {
-        if k == i {
-            let _x: u64 = x;
+    let mut c: u64 = d;
+    let mut s: u64 = 0;
+    let mut _x: u64 = 0;
+    let mut counter_i: u64 = 0;
+    while counter_i < N {
+        if counter_i == i {
+            _x = x;
+        } else if counter_i == j {
+            // continue;
+        } else {
+            let _x = xp[counter_i];
+        }
+        s = s + _x;
+        c = (c * d) / (N * _x);
+        counter_i = counter_i + 1;
+    }
+    c = (c * d) / (N * a);
+    let b: u64 = s + d / a;
+
+    // Newton's method
+    let mut y_prev: u64 = 0;
+    let mut y: u64 = d;
+    let mut counter_j: u64 = 0;
+    while counter_j < 255 {
+        y_prev = y;
+        y = (y * y + c) / (2 * y + b - d);
+        if abs(y , y_prev) <= 1{
+            return y;
         }
     }
+    // revert("y didn't converge");
 }
 
 fn _getD(N: u64, A: u64, xp: [u64; 2]) -> u64 {
