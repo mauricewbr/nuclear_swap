@@ -56,3 +56,42 @@ async fn can_get_balance() {
 
     // Now you have an instance of your contract you can use to test each function
 }
+
+#[tokio::test]
+async fn can_withdraw() {
+    let (_instance, _id) = get_contract_instance().await;
+
+    // Depost some native assets
+    _instance
+        .deposit()
+        .call_params(CallParameters::new(Some(11), None))
+        .call()
+        .await
+        .unwrap();
+
+    // Native asset id
+    let native_asset_id = ContractId::new(*NATIVE_ASSET_ID);
+
+    // Check contract balance
+    let response = _instance
+        .get_balance(native_asset_id.clone())
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(response.value, 11);
+
+    _instance
+        .withdraw(11, native_asset_id.clone())
+        .append_variable_outputs(1)
+        .call()
+        .await
+        .unwrap();
+    
+    // Check contract balance
+    let response = _instance
+        .get_balance(native_asset_id)
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(response.value, 0);
+}
