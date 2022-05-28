@@ -51,6 +51,7 @@ abi NuclearSwap {
     // fn _getD(N: u64, A: u64, xp: [u64; 2]) -> u64; // N = 2
     // fn _getY(N: u64, i: u64, j: u64, x: u64, xp: [u64; 2]) -> u64; // N = 2
     fn get_balance(token: ContractId) -> u64;
+    // fn get_balances(target: ContractId, asset_id: ContractId) -> u64;
     fn deposit();
     fn withdraw(amount: u64, asset_id: ContractId);
     fn getVirtualPrice() -> u64;
@@ -64,6 +65,12 @@ impl NuclearSwap for Contract {
         let key = key_deposits(sender, token.into());
         get::<u64>(key)
     }
+
+    /*
+    fn get_balances(target: ContractId, asset_id: ContractId) -> u64 {
+        balance_of(target, asset_id)
+    }
+    */
 
     fn deposit() {
         assert(msg_asset_id().into() == ETH_ID || msg_asset_id().into() == TOKEN_ID);
