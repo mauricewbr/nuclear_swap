@@ -59,4 +59,14 @@ async fn contract() {
         .unwrap();
     assert_eq!(response.value, 0);
 
+
+    exchange_instance.mint_coins(10000).call().await.unwrap();
+
+    let result = exchange_instance
+        .get_balance_asset(exchange_contract_id.clone(), exchange_contract_id.clone())
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(result.value, 10000);
+
 }
