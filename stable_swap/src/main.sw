@@ -30,7 +30,14 @@ impl NuclearSwap for Contract {
         // } else {
         //     0
         // }
-        Exponentiate(2,4)
+        // Exponentiate.flow(2,4)
+    }
+}
+
+fn exp (base: u64, exponent: u64) -> u64 {
+    asm (r1, r2: base, r3: exponent) {
+        exp r1 r2 r3;
+        r1: u64
     }
 }
 
@@ -123,15 +130,9 @@ fn _getY(N: u64, i: u64, j: u64, x: u64, xp: [u64; 2]) -> u64 {
     while counter_j < 255 && break_early == false{
         y_prev = y;
         y = (y * y + c) / (2 * y + b - d);
-<<<<<<< HEAD
-        if abs(y , y_prev) <= 1 {
-            y
-        }
-=======
         if abs(y , y_prev) <= 1{
             break_early = true;
         };
->>>>>>> e880f3b6966a5edb60272e8c42371018e7bdeddb
     }
     y
     // revert("y didn't converge");
