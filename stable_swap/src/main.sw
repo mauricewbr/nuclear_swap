@@ -45,16 +45,12 @@ const MINIMUM_LIQUIDITY = 1; //A more realistic value would be 1000000000;
 // const DECIMALS: u64 = 10**18;
 
 abi NuclearSwap {
-        /// Return the current balance of given token on the contract
+    /// Return the current balance of given token on the contract
     fn get_balance(token: ContractId) -> u64;
     /// Deposit coins for later adding to liquidity pool.
     fn deposit();
     /// Withdraw coins that have not been added to a liquidity pool yet.
     fn withdraw(amount: u64, asset_id: ContractId);
-    fn mint_coins(mint_amount: u64);
-    fn burn_coins(burn_amount: u64);
-    //
-    fn get_balance_asset(target: ContractId, asset_id: ContractId) -> u64;
     //
     fn transfer_coins_to_output(coins: u64, asset_id: ContractId, recipient: Address);
 
@@ -122,18 +118,6 @@ impl NuclearSwap for Contract {
         store(key, new_amount);
 
         transfer_to_output(amount, asset_id, sender)
-    }
-
-    fn mint_coins(mint_amount: u64) {
-        mint(mint_amount);
-    }
-
-    fn burn_coins(burn_amount: u64) {
-        burn(burn_amount);
-    }
-
-    fn get_balance_asset(target: ContractId, asset_id: ContractId) -> u64 {
-        balance_of(target, asset_id)
     }
 
     fn transfer_coins_to_output(coins: u64, asset_id: ContractId, recipient: Address) {
