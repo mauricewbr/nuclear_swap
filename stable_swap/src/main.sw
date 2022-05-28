@@ -1,14 +1,36 @@
 contract;
 
 use ns_lib::abs; // needs to be added
-use std::address::Address;
-use std::token::{mint_to_address, burn};
+use std::address::*;
+use std::assert::assert;
+use std::block::*;
+use std::chain::auth::*;
+use std::contract_id::ContractId;
+use std::context::{*, call_frames::*};
+use std::hash::*;
+use std::result::*;
+use std::revert::revert;
+use std::token::*;
 use std::storage::*;
 use std::math::*;
 
 storage {
-    totalSupply: u64
+    totalSupply: u64,
+    lp_token_supply: u64
 }
+
+// Token ID of Ether
+const ETH_ID = 0x0000000000000000000000000000000000000000000000000000000000000000;
+
+// Contract ID of the token on the other side of the pool.
+// Modify at compile time for different pool.
+const TOKEN_ID = 0xb72c566e5a9f69c98298a04d70a38cb32baca4d9b280da8590e0314fb00c59e0;
+
+// Storage delimited
+const S_DEPOSITS: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
+
+/// Minimum ETH liquidity to open a pool.
+const MINIMUM_LIQUIDITY = 1; //A more realistic value would be 1000000000;
 
 // const DECIMALS: u64 = 10**18;
 
@@ -19,6 +41,8 @@ abi NuclearSwap {
     // fn _getD(N: u64, A: u64, xp: [u64; 2]) -> u64; // N = 2
     // fn _getY(N: u64, i: u64, j: u64, x: u64, xp: [u64; 2]) -> u64; // N = 2
     fn getVirtualPrice(something: u64) -> u64;
+    //fn swap(i: u64, j: u64, dx: u64, minDy: u64) -> u64;
+    fn add_liquidity(min_liquidity: u64, deadline: u64) -> u64;
 }
 
 impl NuclearSwap for Contract {
@@ -31,6 +55,81 @@ impl NuclearSwap for Contract {
         //     0
         // }
         // Exponentiate.flow(2,4)
+        d
+    }
+
+    fn add_liquidity(min_liquidity: u64, deadline: u64) -> u64 {
+        assert(msg_amount() == 0);
+        assert(deadline > height());
+        assert(msg_asset_id().into() == ETH_ID || msg_asset_id().into() == TOKEN_ID);
+
+        let sender = get_msg_sender_address_or_panic();
+        let total_liquidity = storage.lp_token_supply;
+
+        let eth_amount_key = key_deposits(sender, ETH_ID);
+        let current_eth_amount = get::<u64>(eth_amount_key);
+        
+        let token_amount_key = key_deposits(sender, TOKEN_ID);
+        let current_token_amount = get::<u64>(token_amount_key);
+
+        assert(current_eth_amount > 0);
+
+        let mut minted: u64 = 0;
+        if total_liquidity > 0 {
+            assert(min_liquidity > 0);
+
+            let eth_reserve = get_current_reserve(ETH_ID);
+            let token_reserve = get_current_reserve(TOKEN_ID);
+            let token_amount = (current_eth_amount * token_reserve) / eth_reserve;
+            let liquidity_minted = (current_eth_amount * total_liquidity) / eth_reserve;
+
+            assert(liquidity_minted >= min_liquidity);
+
+            // if token ratio is correct, proceed with adding liquidity
+            // if token ratio is incorrect, return user balances to contract
+            if(current_token_amount >= token_amount) {
+                add_reserve(TOKEN_ID, token_amount);
+                add_reserve(ETH_ID, current_eth_amount);
+
+                mint(liquidity_minted);
+                storage.lp_token_supply = total_liquidity + liquidity_minted;
+
+                transfer_to_output(liquidity_minted, contract_id(), sender);
+
+                // In case user sent more than correct ratio, deposit back extra tokens to contract
+                let token_extra = current_token_amount - token_amount;
+                if (token_extra > 0) {
+                    transfer_to_output(token_extra, ~ContractId::from(TOKEN_ID), sender);
+                }
+                minted = liquidity_minted;
+            } else {
+                transfer_to_output(current_token_amount, ~ContractId::from(TOKEN_ID), sender);
+                transfer_to_output(current_eth_amount, ~ContractId::from(ETH_ID), sender);
+                minted = 0;
+            }
+        } else {
+            assert(current_eth_amount > MINIMUM_LIQUIDITY);
+
+            let initial_liquidity = current_eth_amount;
+
+            // Add funds to the reserve
+            add_reserve(TOKEN_ID, current_token_amount);
+            add_reserve(ETH_ID, current_eth_amount);
+
+            // Mint the LP token
+            mint(initial_liquidity);
+            storage.lp_token_supply = initial_liquidity;
+            
+            // Transfering LP token to user balance
+            transfer_to_output(initial_liquidity, contract_id(), sender);
+            minted = initial_liquidity;
+        }
+
+        // Clear user contract balances after finishing add / create liquidity
+        store(token_amount_key, 0);
+        store(eth_amount_key, 0);
+
+        minted
     }
 }
 
@@ -67,7 +166,7 @@ fn _getYD(N: u64, i: u64, xp: [u64; 2], d: u64) -> u64 {
     let mut c: u64 = 0;
     // let A: u64 = (1000 * (N**(N-1)));
     // following A needs to be replaced by commented A
-    let A: u64 = (1000 * N);
+    let A: u64 = (1000 * exp(N, (N-1)));
     let a: u64 = A * N;
     let mut counter_i: u64 = 0;
     while counter_i < N {
@@ -99,7 +198,7 @@ fn _getYD(N: u64, i: u64, xp: [u64; 2], d: u64) -> u64 {
 fn _getY(N: u64, i: u64, j: u64, x: u64, xp: [u64; 2]) -> u64 {
     // let A: u64 = (1000 * (N**(N-1)));
     // following A needs to be replaced by commented A
-    let A: u64 = (1000 * N);
+    let A: u64 = (1000 * exp(N, (N-1)));
     let a: u64 = A * N;
     let d: u64 = _getD(N, A, xp);
     // uint s;
@@ -141,6 +240,7 @@ fn _getY(N: u64, i: u64, j: u64, x: u64, xp: [u64; 2]) -> u64 {
 fn _getD(N: u64, A: u64, xp: [u64; 2]) -> u64 {
     // N: Number of tokens
     // A: Amplification coefficient multiplied by N^(N-1)
+    let A: u64 = (1000 * exp(N, (N-1)));
     let a: u64 = A * N;
     let mut i = 0;
     //let xp: [u64; 2] = [1; 1000000000000]; 
@@ -170,4 +270,43 @@ fn _getD(N: u64, A: u64, xp: [u64; 2]) -> u64 {
     }
     d
     // Revert("D didn't converge");
+}
+
+// Return the sender as an Address or panic
+// XXX -> Put in library
+fn get_msg_sender_address_or_panic() -> Address {
+    let result: Result<Sender, AuthError> = msg_sender();
+    let mut ret = ~Address::from(0x0000000000000000000000000000000000000000000000000000000000000000);
+    if result.is_err() {
+        revert(0);
+    } else {
+        let unwrapped = result.unwrap();
+        if let Sender::Address(v) = unwrapped {
+            ret = v;
+        } else {
+            revert(0);
+        };
+    };
+
+    ret
+}
+
+// Compute the storage slot for an address's deposits.
+// XXX -> Put in library
+fn key_deposits(a: Address, asset_id: b256) -> b256 {
+    let inner = sha256((a.into(), asset_id));
+    sha256((S_DEPOSITS, inner))
+}
+
+// Return token reserve balance
+// XXX -> Put in library
+fn get_current_reserve(token_id: b256) -> u64 {
+    get::<u64>(token_id)
+}
+
+// Add amount to the token reserve
+// XXX -> Put in library
+fn add_reserve(token_id: b256, amount: u64) {
+    let value = get::<u64>(token_id);
+    store(token_id, value + amount);
 }
