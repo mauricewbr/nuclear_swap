@@ -1,27 +1,38 @@
-//use fuel_tx::ContractId;
-//use fuels_abigen_macro::abigen;
+use fuel_tx::ContractId;
+use fuels_abigen_macro::abigen;
 //use fuels::prelude::launch_provider_and_get_wallet;
+use fuels::prelude::*;
 //use fuels::test_helpers;
 
 // Load abi from json
-//abigen!(MyContract, "out/debug/stable_swap-abi.json");
-
-/* async fn get_contract_instance() -> (MyContract, ContractId) {
-    // Launch a local network and deploy the contract
-    let wallet = launch_provider_and_get_wallet().await;
-
-    let id = Contract::deploy("./out/debug/stable_swap.bin", &wallet, TxParameters::default())
-        .await
-        .unwrap();
-
-    let instance = MyContract::new(id.to_string(), wallet);
-
-    (instance, id)
-} */
+abigen!(MyContract, "out/debug/stable_swap-abi.json");
 
 #[tokio::test]
-async fn can_get_contract_id() {
-    //let (_instance, _id) = get_contract_instance().await;
-    ()
-    // Now you have an instance of your contract you can use to test each function
+async fn contract() {
+    let wallet = launch_provider_and_get_wallet().await;
+
+    // Deploy contract and get ID
+    let exchange_contract_id = Contract::deploy(
+        "out/debug/stable_swap.bin",
+            &wallet,
+            TxParameters::default()
+        )
+        .await
+        .unwrap();
+    
+    let exchange_instance = MyContract::new(
+        exchange_contract_id.to_string(),
+        wallet.clone()
+    );
+    
+
+    let native_asset_id = ContractId::new(*NATIVE_ASSET_ID);
+
+        // Check contract balance
+    let response = exchange_instance
+        .getVirtualPrice()
+        //.call_params(CallParameters::new(Some(11), None))
+        .call()
+        .await
+        .unwrap();
 }
