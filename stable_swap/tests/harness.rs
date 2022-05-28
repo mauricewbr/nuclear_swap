@@ -133,4 +133,72 @@ async fn contract() {
         .call()
         .await
         .unwrap();
+
+    // Add initial liquidity, setting proportion 1:1
+    // where lp tokens returned should be equal to the eth_amount deposited 50
+    exchange_instance
+        .add_liquidity(50, 1000)
+        .append_variable_outputs(1)
+        .call()
+        .await
+        .unwrap();
+
+    // Check LP tokens amount to be 50
+    assert_eq!(
+        wallet
+            .get_spendable_coins(&lp_token_id, 50)
+            .await
+            .unwrap()[0]
+            .amount,
+        50u64.into()
+    );
+
+    // Fund the wallet again with some alt tokens
+    token_instance
+        .transfer_coins_to_output(100, token_contract_id.clone(), address.clone())
+        .append_variable_outputs(1)
+        .call()
+        .await
+        .unwrap();
+
+    // Deposit 100 native assets
+    exchange_instance
+        .deposit()
+        .call_params(CallParameters::new(Some(100), None))
+        .call()
+        .await
+        .unwrap();
+
+    // Deposit 100 alt tokens
+    exchange_instance
+        .deposit()
+        .call_params(CallParameters::new(
+            Some(100),
+            Some(alt_token_id.clone()),
+        ))
+        .call()
+        .await
+        .unwrap();
+
+    // Add liquidity for the second time. Keeping the proportion 1:1
+    // It should return the same amount of LP as the amount of ETH deposited
+    let result = exchange_instance
+        .add_liquidity(100, 1000)
+        .append_variable_outputs(1)
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(result.value, 100);
+
+    // Inspect the wallet for LP tokens - should see 50 LP tokens + 100 LP tokens
+    let lp_tokens = wallet
+        .get_spendable_coins(&lp_token_id, 150)
+        .await
+        .unwrap();
+    assert!(
+        (lp_tokens[0].amount == 50u64.into()) && (lp_tokens[1].amount == 100u64.into())
+        || (lp_tokens[0].amount == 100u64.into()) && (lp_tokens[1].amount == 50u64.into())
+    );
+
+
 }
