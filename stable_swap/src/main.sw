@@ -3,6 +3,14 @@ contract;
 use ns_lib::abs; // needs to be added
 use std::address::Address;
 use std::token::{mint_to_address, burn};
+use std::storage::*;
+use std::math::*;
+
+storage {
+    totalSupply: u64
+}
+
+// const DECIMALS: u64 = 10**18;
 
 abi NuclearSwap {
     // fn _mint(amount: u64, recipient: Address); // same as mint_to_address: 
@@ -10,10 +18,20 @@ abi NuclearSwap {
     // fn _xp(N: u64, xp: [u64;2], balances: [u64; 2], multipliers: [u64; 2]) -> [u64; 2]; // Missing return array
     // fn _getD(N: u64, A: u64, xp: [u64; 2]) -> u64; // N = 2
     // fn _getY(N: u64, i: u64, j: u64, x: u64, xp: [u64; 2]) -> u64; // N = 2
+    fn getVirtualPrice(something: u64) -> u64;
 }
 
 impl NuclearSwap for Contract {
-    
+    fn getVirtualPrice(something: u64)-> u64 {
+        let d: u64 = 10;//_getD(_xp());
+        // let _totalSupply: u64 = storage.totalSupply;
+        // if  _totalSupply > 0 {
+        //     (d*10^DECIMALS) / _totalSupply
+        // } else {
+        //     0
+        // }
+        Exponentiate(2,4)
+    }
 }
 
 fn _mint(amount: u64, recipient: Address) {
@@ -60,13 +78,15 @@ fn _getYD(N: u64, i: u64, xp: [u64; 2], d: u64) -> u64 {
     let mut y_prev: u64 = 0;
     let mut y: u64 = d;
     let mut counter_j: u64 = 0;
-    while counter_j < 255 {
+    let mut break_early = false;
+    while counter_j < 255 && break_early == false {
         y_prev = y;
         y = (y * y + c) / (2 * y + b - d);
-        if abs(y , y_prev) <= 1{
-            return y
-        }
+        if abs(y , y_prev) <= 1 {
+            break_early = true;
+        };
     }
+    y
 }
 
 fn _getY(N: u64, i: u64, j: u64, x: u64, xp: [u64; 2]) -> u64 {
@@ -80,14 +100,14 @@ fn _getY(N: u64, i: u64, j: u64, x: u64, xp: [u64; 2]) -> u64 {
     let mut s: u64 = 0;
     let mut _x: u64 = 0;
     let mut counter_i: u64 = 0;
-    while counter_i < N {
+    while counter_i < N{
         if counter_i == i {
             _x = x;
         } else if counter_i == j {
             // continue;
         } else {
             let _x = xp[counter_i];
-        }
+        };
         s = s + _x;
         c = (c * d) / (N * _x);
         counter_i = counter_i + 1;
@@ -99,13 +119,21 @@ fn _getY(N: u64, i: u64, j: u64, x: u64, xp: [u64; 2]) -> u64 {
     let mut y_prev: u64 = 0;
     let mut y: u64 = d;
     let mut counter_j: u64 = 0;
-    while counter_j < 255 {
+    let mut break_early = false;
+    while counter_j < 255 && break_early == false{
         y_prev = y;
         y = (y * y + c) / (2 * y + b - d);
+<<<<<<< HEAD
         if abs(y , y_prev) <= 1 {
             y
         }
+=======
+        if abs(y , y_prev) <= 1{
+            break_early = true;
+        };
+>>>>>>> e880f3b6966a5edb60272e8c42371018e7bdeddb
     }
+    y
     // revert("y didn't converge");
 }
 
@@ -124,7 +152,8 @@ fn _getD(N: u64, A: u64, xp: [u64; 2]) -> u64 {
     let mut d: u64 = s;
     let mut i = 0;
     let mut j = 0;
-    while i < 255 {
+    let mut break_early = false;
+    while i < 255  && break_early == false{
         let mut p: u64 = d;
         while j < N {
             p = (p * d) / (N * xp[j]);
@@ -133,10 +162,11 @@ fn _getD(N: u64, A: u64, xp: [u64; 2]) -> u64 {
         let d_prev: u64 = d;
         d = ((a * s + N * p) * d) / ((a - 1) * d + (N + 1) * p);
 
-        if abs(d, d_prev) <= 1 {
-            return d
+        if abs(d, d_prev) <= 1{
+            break_early = true;
         }
         i = i + 1;
     }
+    d
     // Revert("D didn't converge");
 }
