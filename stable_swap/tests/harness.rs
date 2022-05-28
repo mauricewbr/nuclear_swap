@@ -1,4 +1,4 @@
-use fuel_tx::ContractId;
+use fuel_tx::{AssetId, ContractId};
 use fuels_abigen_macro::abigen;
 //use fuels::prelude::launch_provider_and_get_wallet;
 use fuels::prelude::*;
@@ -103,4 +103,34 @@ async fn contract() {
         .unwrap();
     assert_eq!(result.value, 10000 - 50);
 
+    let alt_token_id = AssetId::from(*token_contract_id.clone());
+    let lp_token_id = AssetId::from(*exchange_contract_id.clone());
+
+
+    // Inspect the wallet for alt tokens
+    // not in any of the contracts
+    let coins = wallet
+        .get_spendable_coins(&alt_token_id, 50)
+        .await
+        .unwrap();
+    assert_eq!(coins[0].amount, 50u64.into());
+
+    // Deposit 50 native assets
+    exchange_instance
+        .deposit()
+        .call_params(CallParameters::new(Some(50), None))
+        .call()
+        .await
+        .unwrap();
+
+    // deposit 50 alt tokens into the Exchange contract
+    exchange_instance
+        .deposit()
+        .call_params(CallParameters::new(
+            Some(50),
+            Some(alt_token_id.clone()),
+        ))
+        .call()
+        .await
+        .unwrap();
 }
