@@ -36,7 +36,7 @@ fn _xp(N: u64, xp: [u64; 2], balances: [u64; 2], multipliers: [u64; 2]) {
 }
 */
 
-fn _getYD(N: u64, i: u64, xp: [u64; 2], d: u64) -> (u64, u64, u64) {
+fn _getYD(N: u64, i: u64, xp: [u64; 2], d: u64) -> u64 {
     let mut _x: u64 = 0;
     let mut s: u64 = 0;
     let mut c: u64 = 0;
@@ -61,7 +61,7 @@ fn _getYD(N: u64, i: u64, xp: [u64; 2], d: u64) -> (u64, u64, u64) {
         y_prev = y;
         y = (y * y + c) / (2 * y + b - d);
         if abs(y , y_prev) <= 1{
-            return y;
+            return y
         }
     }
 }
@@ -98,7 +98,7 @@ fn _getY(N: u64, i: u64, j: u64, x: u64, xp: [u64; 2]) -> u64 {
         y_prev = y;
         y = (y * y + c) / (2 * y + b - d);
         if abs(y , y_prev) <= 1{
-            return y;
+            return y
         }
     }
     // revert("y didn't converge");
