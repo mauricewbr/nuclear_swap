@@ -20,8 +20,39 @@ async fn get_contract_instance() -> (MyContract, ContractId) {
 }
 
 #[tokio::test]
-async fn can_get_contract_id() {
+async fn can_deposit() {
     let (_instance, _id) = get_contract_instance().await;
+
+    _instance
+        .deposit()
+        .call_params(CallParameters::new(Some(11), None))
+        .call()
+        .await
+        .unwrap();
+
+    // Now you have an instance of your contract you can use to test each function
+}
+
+#[tokio::test]
+async fn can_get_balance() {
+    let (_instance, _id) = get_contract_instance().await;
+
+    _instance
+        .deposit()
+        .call_params(CallParameters::new(Some(11), None))
+        .call()
+        .await
+        .unwrap();
+
+    // Native asset id
+    let native_asset_id = ContractId::new(*NATIVE_ASSET_ID);
+
+    let response = _instance
+        .get_balance(native_asset_id)
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(response.value, 11);
 
     // Now you have an instance of your contract you can use to test each function
 }

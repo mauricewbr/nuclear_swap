@@ -50,6 +50,7 @@ abi NuclearSwap {
     // fn _xp(N: u64, xp: [u64;2], balances: [u64; 2], multipliers: [u64; 2]) -> [u64; 2]; // Missing return array
     // fn _getD(N: u64, A: u64, xp: [u64; 2]) -> u64; // N = 2
     // fn _getY(N: u64, i: u64, j: u64, x: u64, xp: [u64; 2]) -> u64; // N = 2
+    fn get_balance(token: ContractId) -> u64;
     fn deposit();
     fn withdraw(amount: u64, asset_id: ContractId);
     fn getVirtualPrice() -> u64;
@@ -58,6 +59,12 @@ abi NuclearSwap {
 }
 
 impl NuclearSwap for Contract {
+    fn get_balance(token: ContractId) -> u64 {
+        let sender = get_msg_sender_address_or_panic();
+        let key = key_deposits(sender, token.into());
+        get::<u64>(key)
+    }
+
     fn deposit() {
         assert(msg_asset_id().into() == ETH_ID || msg_asset_id().into() == TOKEN_ID);
 
@@ -65,7 +72,7 @@ impl NuclearSwap for Contract {
 
         let key = key_deposits(sender, msg_asset_id().into());
         let total_amount = get::<u64>(key) + msg_amount();
-        
+
         store(key, total_amount);
     }
 
