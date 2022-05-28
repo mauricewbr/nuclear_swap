@@ -7,15 +7,26 @@ use ns_lib::abs; // needs to be added
 // use std::math::*;
 
 use std::{
-    address::Address,
+    address::*,
     token::{mint_to_address, burn},
     storage::*,
     math::*,
-    assert::assert
+    assert::assert,
+    block::*,
+    chain::auth::*,
+    context::{*, call_frames::*},
+    contract_id::ContractId,
+    hash::*,
+    revert::revert,
+    // token::*,
+    result::*
 };
 
 storage {
-    totalSupply: u64
+    N: u64,
+    totalSupply: u64,
+    xp: [u64; 2],
+    multipliers: [u64; 2]
 }
 
 abi NuclearSwap {
@@ -41,8 +52,51 @@ impl NuclearSwap for Contract {
 
     fn swap(i: u64, j:u64, dx: u64, minDy: u64) -> u64 {
         assert(i != j);
+        let asset_id = msg_asset_id().into();
+        let fowarded_amount = msg_amount();
+        let sender = get_msg_sender_address_or_panic();
+        
+        // TO DO: IERC20(tokens[i]).transferFrom(msg.sender, address(this), dx);
+        let xpi: u64 = storage.xp[i];
+        let multi: u64 =  storage.multipliers[i];
+        let x: u64 = xpi + dx * multi;
+        let y0: u64 = xp[j];
+        let y1: u64 = _getY(i, j, x, xp);
+        // y0 must be >= y1, since x has increased
+        // -1 to round down
+        let mut dy: u64 = (y0 - y1 - 1) / storage.multipliers[j];
 
+        // Subtract fee from dy
+        let fee: u64 = (dy * SWAP_FEE) / FEE_DENOMINATOR;
+        dy -= fee;
+        assert(dy >= minDy);
+
+        balances[i] += dx;
+        balances[j] -= dy;
+
+        // IERC20(tokens[j]).transfer(msg.sender, dy);
+
+        let dummy: u64 = 1;
+        dummy
     }
+}
+
+/// Return the sender as an Address or panic
+fn get_msg_sender_address_or_panic() -> Address {
+    let result: Result<Sender, AuthError> = msg_sender();
+    let mut ret = ~Address::from(0x0000000000000000000000000000000000000000000000000000000000000000);
+    if result.is_err() {
+        revert(0);
+    } else {
+        let unwrapped = result.unwrap();
+        if let Sender::Address(v) = unwrapped {
+            ret = v;
+        } else {
+            revert(0);
+        };
+    };
+
+    ret
 }
 
 fn exp (base: u64, exponent: u64) -> u64 {
