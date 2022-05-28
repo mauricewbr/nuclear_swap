@@ -51,8 +51,8 @@ abi NuclearSwap {
     fn deposit();
     /// Withdraw coins that have not been added to a liquidity pool yet.
     fn withdraw(amount: u64, asset_id: ContractId);
-    // fn _mint(amount: u64, recipient: Address); // same as mint_to_address: 
-    // fn _burn(amount: u64); // misses from: ContractId???
+    fn mint_coins(mint_amount: u64);
+    fn burn_coins(burn_amount: u64);
     // fn _xp(N: u64, xp: [u64;2], balances: [u64; 2], multipliers: [u64; 2]) -> [u64; 2]; // Missing return array
     // fn _getD(N: u64, A: u64, xp: [u64; 2]) -> u64; // N = 2
     // fn _getY(N: u64, i: u64, j: u64, x: u64, xp: [u64; 2]) -> u64; // N = 2
@@ -117,6 +117,14 @@ impl NuclearSwap for Contract {
         store(key, new_amount);
 
         transfer_to_output(amount, asset_id, sender)
+    }
+
+    fn mint_coins(mint_amount: u64) {
+        mint(mint_amount);
+    }
+
+    fn burn_coins(burn_amount: u64) {
+        burn(burn_amount);
     }
 
 
