@@ -49,13 +49,14 @@ const S_DEPOSITS: b256 = 0x00000000000000000000000000000000000000000000000000000
 const MINIMUM_LIQUIDITY = 1; //A more realistic value would be 1000000000;
 
 //SWAP_FEE: u64,
-//const SWAP_FEE = 1;
+const SWAP_FEE = 1;
 
-//LIQUIDITY_FEE: u64,
-//const LIQUIDITY_FEE = 1;
+// 2 because of 2 asset pool!
+const N = 2;
+
+//uint private constant LIQUIDITY_FEE = (SWAP_FEE * N) / (4 * (N - 1));
 
 //FEE_DENOMINATOR: u64,
-//const 
 
 // const DECIMALS: u64 = 10**18;
 
@@ -181,6 +182,9 @@ impl NuclearSwap for Contract {
         assert(deadline > height());
         assert(msg_asset_id().into() == ETH_ID || msg_asset_id().into() == TOKEN_ID);
 
+        let FEE_DENOMINATOR = exp(10,6);
+        let LIQUIDITY_FEE = (SWAP_FEE * N) / (5 * (N - 1));
+
         let sender = get_msg_sender_address_or_panic();
         let total_liquidity = storage.lp_token_supply;
 
@@ -196,30 +200,59 @@ impl NuclearSwap for Contract {
         if total_liquidity > 0 {
             assert(min_liquidity > 0);
 
-            let eth_reserve = get_current_reserve(ETH_ID);
-            let token_reserve = get_current_reserve(TOKEN_ID);
-            let token_amount = (current_eth_amount * token_reserve) / eth_reserve;
-            let liquidity_minted = (current_eth_amount * total_liquidity) / eth_reserve;
+            let current_eth_reserve = get_current_reserve(ETH_ID);
+            let current_token_reserve = get_current_reserve(TOKEN_ID);
 
-            assert(liquidity_minted >= min_liquidity);
+            let token_amount = (current_eth_amount * current_token_reserve) / current_eth_reserve;
+            // let liquidity_minted = (current_eth_amount * total_liquidity) / current_eth_reserve;
+
+            // Get current balances and store in xp:
+            let current_reserves: [u64; 2] = [current_eth_reserve, current_token_reserve];
+
+            // Calculating D, sum of balances in a perfectly balanced pool
+            let current_d = _getD(current_reserves);
 
             // if token ratio is correct, proceed with adding liquidity
             // if token ratio is incorrect, return user balances to contract
             if (current_token_amount >= token_amount) {
+                // Adding new tokens to reserves:
                 add_reserve(TOKEN_ID, token_amount);
                 add_reserve(ETH_ID, current_eth_amount);
 
-                mint(liquidity_minted);
-                storage.lp_token_supply = total_liquidity + liquidity_minted;
+                // Calculating ideal LP token amount to mint and send:
+                let new_eth_reserve = get_current_reserve(ETH_ID);
+                let new_token_reserve = get_current_reserve(TOKEN_ID);
+                let new_reserves: [u64; 2] = [new_eth_reserve, new_token_reserve];
 
-                transfer_to_output(liquidity_minted, contract_id(), sender);
+                let new_d = _getD(new_reserves); // Calculating D, sum of balances in a perfectly balanced pool
+
+                let idealBalance_eth: u64 = (current_eth_reserve * new_d) / current_d;
+                let diff_eth: u64 = abs(new_eth_reserve, idealBalance_eth);
+                let net_new_eth_reserve: u64 = (LIQUIDITY_FEE * diff_eth) / FEE_DENOMINATOR;
+
+                let idealBalance_token: u64 = (current_token_reserve * new_d) / current_d;
+                let diff_token: u64 = abs(new_token_reserve, idealBalance_token);
+                let net_new_token_reserve: u64 = (LIQUIDITY_FEE * diff_token) / FEE_DENOMINATOR;
+
+                let net_new_reserves: [u64; 2] = [net_new_eth_reserve, net_new_token_reserve];
+                let net_new_d = _getD(net_new_reserves);
+
+                let liquidity_to_mint = ((net_new_d - current_d) * total_liquidity) / current_d;
+
+                assert(liquidity_to_mint >= min_liquidity);
+
+                // Minting LP tokens and transferring to sender:
+                mint(liquidity_to_mint);
+                storage.lp_token_supply = total_liquidity + liquidity_to_mint;
+
+                transfer_to_output(liquidity_to_mint, contract_id(), sender);
 
                 // In case user sent more than correct ratio, deposit back extra tokens to contract
                 let token_extra = current_token_amount - token_amount;
                 if (token_extra > 0) {
                     transfer_to_output(token_extra, ~ContractId::from(TOKEN_ID), sender);
                 }
-                minted = liquidity_minted;
+                minted = liquidity_to_mint;
             } else {
                 transfer_to_output(current_token_amount, ~ContractId::from(TOKEN_ID), sender);
                 transfer_to_output(current_eth_amount, ~ContractId::from(ETH_ID), sender);
