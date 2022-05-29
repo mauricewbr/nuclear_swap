@@ -8,6 +8,7 @@ use std::chain::auth::*;
 use std::contract_id::ContractId;
 use std::context::{*, call_frames::*};
 use std::hash::*;
+use std::logging::log;
 use std::result::*;
 use std::revert::revert;
 use std::token::*;
@@ -101,8 +102,7 @@ impl NuclearSwap for Contract {
     }
 
     fn getVirtualPrice() -> u64 {
-        let xp: [u64;
-        2] = [storage.xpX, storage.xpY];
+        let xp: [u64; 2] = [storage.xpX, storage.xpY];
         let d: u64 = _getD(xp);
         let _totalSupply: u64 = storage.totalSupply;
         if _totalSupply > 0 {
@@ -114,18 +114,32 @@ impl NuclearSwap for Contract {
 
     fn swap(i: u64, j: u64, dx: u64, minDy: u64) -> u64 {
         assert(i != j);
+        assert(msg_asset_id().into() == ETH_ID || msg_asset_id().into() == TOKEN_ID);
+
         let asset_id = msg_asset_id().into();
-        let fowarded_amount = msg_amount();
+        let forwarded_amount = msg_amount();
         let sender = get_msg_sender_address_or_panic();
 
         // TO DO: IERC20(tokens[i]).transferFrom(msg.sender, address(this), dx);
 
-        let x: u64 = storage.xpX + dx * storage.multiplierX;
-
+        // Get new token_in amount:
+        let eth_amount_key = key_deposits(sender, ETH_ID);
+        let current_eth_amount = get::<u64>(eth_amount_key);
+        assert(dx >= 0);
+        add_reserve(ETH_ID, dx);
+        // New balance token_in = current balance token_in + delta token_in * multiplier
+        // let x: u64 = storage.xpX + dx * storage.multiplierX;
+        
+        // Get current token_out amount:
         let y0: u64 = storage.xpY;
-        let xp: [u64;
-        2] = [storage.xpX, storage.xpY];
+
+        // Get current balances and store in xp
+        let xp: [u64; 2] = [storage.xpX, storage.xpY];
+
+        // Computing new token_out amount
         let y1: u64 = _getY(i, j, x, xp);
+
+        // Computing delta token_out
         // y0 must be >= y1, since x has increased
         // -1 to round down
         let mut dy: u64 = (y0 - y1 - 1) / storage.multiplierY;
@@ -242,7 +256,7 @@ impl NuclearSwap for Contract {
         // Remove funds from the reserve
         remove_reserve(TOKEN_ID, token_amount);
         remove_reserve(ETH_ID, eth_amount);
-        
+
         // Send tokens back
         transfer_to_output(eth_amount, ~ContractId::from(ETH_ID), sender);
         transfer_to_output(token_amount, ~ContractId::from(TOKEN_ID), sender);
@@ -270,8 +284,7 @@ fn _burn(amount: u64) {
     burn(amount);
 }
 
-fn _getYD(i: u64, xp: [u64;
-2], d: u64) -> u64 {
+fn _getYD(i: u64, xp: [u64; 2], d: u64) -> u64 {
     let N: u64 = storage.N;
 
     let mut s: u64 = 0;
@@ -309,8 +322,7 @@ fn _getYD(i: u64, xp: [u64;
     y
 }
 
-fn _getY(i: u64, j: u64, x: u64, xp: [u64;
-2]) -> u64 {
+fn _getY(i: u64, j: u64, x: u64, xp: [u64; 2]) -> u64 {
     // let A: u64 = (1000 * (N**(N-1)));
     // following A needs to be replaced by commented A
     let N: u64 = storage.N;
@@ -363,8 +375,7 @@ fn _getD(xp: [u64;
     let A: u64 = (1000 * (exp(N, N - 1)));
     let a: u64 = A * N;
     let mut i = 0;
-    let xp: [u64;
-    2] = [storage.xpX, storage.xpY];
+    let xp: [u64; 2] = [storage.xpX, storage.xpY];
     let mut s: u64 = xp[0];
     while i < N {
         s = s + xp[i];

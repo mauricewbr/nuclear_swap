@@ -367,13 +367,125 @@ async fn can_remove_liquidity() {
     assert_eq!(result.value.token_amount, 30);
     
     // Inspect the wallet for LP tokens
-    // It should have 20 lp tokens)
+    // It should have 20 lp tokens
     let spendable_coins = wallet
         .get_spendable_coins(&lp_token_id, 20)
         .await
         .unwrap();
     let total_amount: u64 = spendable_coins.iter().map(|c| c.amount.0).sum();
 
-    // Inspect the wallet for alt tokens to be 20
+    // Inspect the wallet for LP tokens to be 20
     assert_eq!(total_amount, 20);
+}
+
+#[tokio::test]
+async fn can_swap() {
+    // Launch a local network and deploy the contract
+    let wallet = launch_provider_and_get_wallet().await;
+
+    let _swap_contract_id = Contract::deploy("./out/debug/stable_swap.bin", &wallet, TxParameters::default())
+        .await
+        .unwrap();
+
+    let _swap_contract_instance = MyContract::new(_swap_contract_id.to_string(), wallet.clone());
+
+    // Get the contract ID and a handle to it
+    let _token_contract_id =
+        Contract::deploy(
+            "../token_contract/out/debug/token_contract.bin",
+            &wallet,
+            TxParameters::default()
+        )
+        .await
+        .unwrap();
+    let _token_contract_instance = TestToken::new(_token_contract_id.to_string(), wallet.clone());
+
+    // Mint some alt tokens
+    _token_contract_instance.mint_coins(10000).call().await.unwrap();
+
+    // Check the balance of the contract of its own asset
+    let result = _token_contract_instance
+        .get_balance(_token_contract_id.clone(), _token_contract_id.clone())
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(result.value, 10000);
+
+    // Transfer some alt tokens to the wallet
+    let address = wallet.address();
+    let _t = _token_contract_instance
+        .transfer_coins_to_output(50, _token_contract_id.clone(), address.clone())
+        .append_variable_outputs(1)
+        .call()
+        .await
+        .unwrap();
+
+    // Check the balance of the contract of its own asset
+    let result = _token_contract_instance
+        .get_balance(_token_contract_id.clone(), _token_contract_id.clone())
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(result.value, 10000 - 50);
+
+    let alt_token_id = AssetId::from(*_token_contract_id.clone());
+    let lp_token_id = AssetId::from(*_swap_contract_id.clone());
+    
+    // Inspect the wallet for alt tokens
+    let coins = wallet
+        .get_spendable_coins(&alt_token_id, 50)
+        .await
+        .unwrap();
+    assert_eq!(coins[0].amount, 50u64.into());
+    
+    // Deposit 50 native assets
+    _swap_contract_instance
+        .deposit()
+        .call_params(CallParameters::new(Some(50), None))
+        .call()
+        .await
+        .unwrap();
+
+    // deposit 50 alt tokens into the Exchange contract
+    _swap_contract_instance
+        .deposit()
+        .call_params(CallParameters::new(
+            Some(50),
+            Some(alt_token_id.clone()),
+        ))
+        .call()
+        .await
+        .unwrap();
+    
+    // Add initial liquidity, setting proportion 1:1
+    // where lp tokens returned should be equal to the eth_amount deposited 50
+    _swap_contract_instance
+        .add_liquidity(1, 1000)
+        .append_variable_outputs(1)
+        .call()
+        .await
+        .unwrap();
+
+    // Check LP tokens amount to be 50
+    assert_eq!(
+        wallet
+            .get_spendable_coins(&lp_token_id, 50)
+            .await
+            .unwrap()[0]
+            .amount,
+        50u64.into()
+    );
+
+    let amount: u64 = 10;
+
+    _swap_contract_instance
+        .swap()
+        .call_params(CallParameters::new(
+            Some(amount),
+            Some(alt_token_id.clone()),
+        ))
+        .append_variable_outputs(1)
+        .call()
+        .await
+        .unwrap();
 }
