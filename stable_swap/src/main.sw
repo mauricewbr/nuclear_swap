@@ -16,17 +16,17 @@ use std::storage::*;
 use std::math::*;
 
 storage {
-    N: u64,
+    //N: u64,
     totalSupply: u64,
-    xpX: u64,
-    xpY: u64,
-    multiplierX: u64,
-    multiplierY: u64,
-    balanceX: u64,
-    balanceY: u64,
-    SWAP_FEE: u64,
-    LIQUIDITY_FEE: u64,
-    FEE_DENOMINATOR: u64,
+    //xpX: u64,
+    //xpY: u64,
+    //multiplierX: u64,
+    //multiplierY: u64,
+    //balanceX: u64,
+    //balanceY: u64,
+    //SWAP_FEE: u64,
+    //LIQUIDITY_FEE: u64,
+    //FEE_DENOMINATOR: u64,
     lp_token_supply: u64,
 }
 
@@ -48,6 +48,15 @@ const S_DEPOSITS: b256 = 0x00000000000000000000000000000000000000000000000000000
 /// Minimum ETH liquidity to open a pool.
 const MINIMUM_LIQUIDITY = 1; //A more realistic value would be 1000000000;
 
+//SWAP_FEE: u64,
+//const SWAP_FEE = 1;
+
+//LIQUIDITY_FEE: u64,
+//const LIQUIDITY_FEE = 1;
+
+//FEE_DENOMINATOR: u64,
+//const 
+
 // const DECIMALS: u64 = 10**18;
 
 abi NuclearSwap {
@@ -55,7 +64,7 @@ abi NuclearSwap {
     // fn get_balances(target: ContractId, asset_id: ContractId) -> u64;
     fn deposit();
     fn withdraw(amount: u64, asset_id: ContractId);
-    fn getVirtualPrice() -> u64;
+    //fn getVirtualPrice() -> u64;
     fn swap(dx: u64, minDy: u64) -> u64;
     fn add_liquidity(min_liquidity: u64, deadline: u64) -> u64;
     fn remove_liquidity(min_eth: u64, min_tokens: u64, deadline: u64) -> RemoveLiquidityReturn;
@@ -101,6 +110,7 @@ impl NuclearSwap for Contract {
         transfer_to_output(amount, asset_id, sender)
     }
 
+    /*
     fn getVirtualPrice() -> u64 {
         let xp: [u64; 2] = [storage.xpX, storage.xpY];
         let d: u64 = _getD(xp);
@@ -111,9 +121,14 @@ impl NuclearSwap for Contract {
             0
         }
     }
+    */
 
     fn swap(dx: u64, minDy: u64) -> u64 {
-        assert(i != j);
+        // assert(i != j);
+        let i = 0;
+        let j = 1;
+        // remove i and j 
+
         assert(msg_asset_id().into() == ETH_ID || msg_asset_id().into() == TOKEN_ID);
 
         let asset_id = msg_asset_id().into();
@@ -130,7 +145,6 @@ impl NuclearSwap for Contract {
         // Get new token_in amount:
         assert(dx >= 0);
         let new_reserve_x = current_reserve_x + dx;
-        // New balance token_in = current balance token_in + delta token_in * multiplier
         // let x: u64 = storage.xpX + dx * storage.multiplierX;
 
         // Get current balances and store in xp:
@@ -147,14 +161,14 @@ impl NuclearSwap for Contract {
         //let mut dy: u64 = (y0 - y1 - 1) / storage.multiplierY;
 
         // Subtract fee from dy
-        let fee: u64 = (dy * storage.SWAP_FEE) / storage.FEE_DENOMINATOR;
-        dy = dy - fee;
+        //let fee: u64 = (dy * SWAP_FEE) / FEE_DENOMINATOR;
+        //dy = dy - fee;
         assert(dy >= minDy);
 
         // TO DO: balances[i] += dx;
         // TO DO: balances[j] -= dy;
         add_reserve(ETH_ID, dx);
-        remove_reserve(TOKEN_ID, dx);
+        remove_reserve(TOKEN_ID, dy);
         // storage.balanceX = storage.balanceX + dx;
         // storage.balanceY = storage.balanceY + dy;
         // TO DO: IERC20(tokens[j]).transfer(msg.sender, dy);
@@ -289,7 +303,9 @@ fn _burn(amount: u64) {
 }
 
 fn _getYD(i: u64, xp: [u64; 2], d: u64) -> u64 {
-    let N: u64 = storage.N;
+    // XXX -> N = 2
+    let N = 2;
+    // let N: u64 = storage.N;
 
     let mut s: u64 = 0;
     let mut c: u64 = d;
@@ -329,7 +345,8 @@ fn _getYD(i: u64, xp: [u64; 2], d: u64) -> u64 {
 fn _getY(i: u64, j: u64, x: u64, xp: [u64; 2]) -> u64 {
     // let A: u64 = (1000 * (N**(N-1)));
     // following A needs to be replaced by commented A
-    let N: u64 = storage.N;
+    // XXX -> N = 2 should be dynamic
+    let N: u64 = 2;
     let A: u64 = (1000 * (exp(N, N - 1)));
     let a: u64 = A * N;
     let d: u64 = _getD(xp);
@@ -371,15 +388,19 @@ fn _getY(i: u64, j: u64, x: u64, xp: [u64; 2]) -> u64 {
     y // revert("y didn't converge");
 }
 
-fn _getD(xp: [u64;
-2]) -> u64 {
+fn _getD(xp: [u64; 2]) -> u64 {
     // N: Number of tokens
     // A: Amplification coefficient multiplied by N^(N-1)
-    let N: u64 = storage.N;
+    let current_reserve_x = get_current_reserve(ETH_ID);
+    let current_reserve_y = get_current_reserve(TOKEN_ID);
+
+    // XXX -> N = 2
+    let N: u64 = 2;
+
     let A: u64 = (1000 * (exp(N, N - 1)));
     let a: u64 = A * N;
     let mut i = 0;
-    let xp: [u64; 2] = [storage.xpX, storage.xpY];
+    let xp: [u64; 2] = [current_reserve_x, current_reserve_y];
     let mut s: u64 = xp[0];
     while i < N {
         s = s + xp[i];

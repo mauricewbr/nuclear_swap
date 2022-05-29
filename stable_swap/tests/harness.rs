@@ -479,7 +479,7 @@ async fn can_swap() {
     let amount: u64 = 10;
 
     _swap_contract_instance
-        .swap()
+        .swap(5, 5)
         .call_params(CallParameters::new(
             Some(amount),
             Some(alt_token_id.clone()),
