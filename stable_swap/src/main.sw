@@ -29,6 +29,11 @@ storage {
     lp_token_supply: u64,
 }
 
+pub struct RemoveLiquidityReturn {
+    eth_amount: u64,
+    token_amount: u64,
+}
+
 // Token ID of Ether
 const ETH_ID = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
@@ -45,11 +50,6 @@ const MINIMUM_LIQUIDITY = 1; //A more realistic value would be 1000000000;
 // const DECIMALS: u64 = 10**18;
 
 abi NuclearSwap {
-    // fn _mint(amount: u64, recipient: Address); // same as mint_to_address:
-    // fn _burn(amount: u64); // misses from: ContractId???
-    // fn _xp(N: u64, xp: [u64;2], balances: [u64; 2], multipliers: [u64; 2]) -> [u64; 2]; // Missing return array
-    // fn _getD(N: u64, A: u64, xp: [u64; 2]) -> u64; // N = 2
-    // fn _getY(N: u64, i: u64, j: u64, x: u64, xp: [u64; 2]) -> u64; // N = 2
     fn get_balance(token: ContractId) -> u64;
     // fn get_balances(target: ContractId, asset_id: ContractId) -> u64;
     fn deposit();
@@ -57,6 +57,7 @@ abi NuclearSwap {
     fn getVirtualPrice() -> u64;
     fn swap(i: u64, j: u64, dx: u64, minDy: u64) -> u64;
     fn add_liquidity(min_liquidity: u64, deadline: u64) -> u64;
+    fn remove_liquidity(min_eth: u64, min_tokens: u64, deadline: u64) -> RemoveLiquidityReturn;
 }
 
 impl NuclearSwap for Contract {
@@ -216,6 +217,40 @@ impl NuclearSwap for Contract {
 
         minted
     }
+
+    fn remove_liquidity(min_eth: u64, min_tokens: u64, deadline: u64) -> RemoveLiquidityReturn {
+        assert(msg_amount() > 0);
+        assert(msg_asset_id().into() == (contract_id()).into());
+        assert(deadline > height());
+        assert(min_eth > 0 && min_tokens > 0);
+
+        let sender = get_msg_sender_address_or_panic();
+
+        let total_liquidity = storage.lp_token_supply;
+        assert(total_liquidity > 0);
+
+        let eth_reserve = get_current_reserve(ETH_ID);
+        let token_reserve = get_current_reserve(TOKEN_ID);
+        let eth_amount = (msg_amount() * eth_reserve) / total_liquidity;
+        let token_amount = (msg_amount() * token_reserve) / total_liquidity;
+
+        assert((eth_amount >= min_eth) && (token_amount >= min_tokens));
+
+        burn(msg_amount());
+        storage.lp_token_supply = total_liquidity - msg_amount();
+
+        // Add fund to the reservers
+        remove_reserve(TOKEN_ID, token_amount);
+        remove_reserve(ETH_ID, eth_amount);
+        // Send tokens back
+        transfer_to_output(eth_amount, ~ContractId::from(ETH_ID), sender);
+        transfer_to_output(token_amount, ~ContractId::from(TOKEN_ID), sender);
+
+        RemoveLiquidityReturn {
+            eth_amount: eth_amount,
+            token_amount: token_amount,
+        }
+    }
 }
 
 fn exp(base: u64, exponent: u64) -> u64 {
@@ -232,18 +267,6 @@ fn _mint(amount: u64, recipient: Address) {
 fn _burn(amount: u64) {
     burn(amount);
 }
-
-/*
-fn _xp(N: u64, xp: [u64; 2], balances: [u64; 2], multipliers: [u64; 2]) {
-    let mut counter = 0;
-    while counter < N { // N = 2
-        // needs fix -> static array
-        xp[counter] = balances[counter] * multipliers[counter];
-        counter = counter + 1;
-    }
-    // return xp ??? How to return array?
-}
-*/
 
 fn _getYD(i: u64, xp: [u64;
 2], d: u64) -> u64 {
@@ -404,4 +427,9 @@ fn get_current_reserve(token_id: b256) -> u64 {
 fn add_reserve(token_id: b256, amount: u64) {
     let value = get::<u64>(token_id);
     store(token_id, value + amount);
+}
+
+fn remove_reserve(token_id: b256, amount: u64) {
+    let value = get::<u64>(token_id);
+    store(token_id, value - amount);
 }
