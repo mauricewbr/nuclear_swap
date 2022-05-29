@@ -509,4 +509,18 @@ async fn can_swap() {
         .unwrap();
     assert!(result.value > 0);
     println!("Result is {}", result.value);
+
+    let balances = _swap_contract_instance
+        .get_balances(_swap_contract_id, _swap_contract_id)
+        .call()
+        .await
+        .unwrap();
+    println!("All swap contract balances: {:?}", balances);
+
+    let balances = _token_contract_instance
+        .get_balance(_token_contract_id, _token_contract_id)
+        .call()
+        .await
+        .unwrap();
+    println!("All token contract balances: {:?}", balances);
 }
