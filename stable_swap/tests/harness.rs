@@ -414,7 +414,7 @@ async fn can_swap() {
     // Transfer some alt tokens to the wallet
     let address = wallet.address();
     let _t = _token_contract_instance
-        .transfer_coins_to_output(50, _token_contract_id.clone(), address.clone())
+        .transfer_coins_to_output(500, _token_contract_id.clone(), address.clone())
         .append_variable_outputs(1)
         .call()
         .await
@@ -426,22 +426,22 @@ async fn can_swap() {
         .call()
         .await
         .unwrap();
-    assert_eq!(result.value, 10000 - 50);
+    assert_eq!(result.value, 10000 - 500);
 
     let alt_token_id = AssetId::from(*_token_contract_id.clone());
     let lp_token_id = AssetId::from(*_swap_contract_id.clone());
     
     // Inspect the wallet for alt tokens
     let coins = wallet
-        .get_spendable_coins(&alt_token_id, 50)
+        .get_spendable_coins(&alt_token_id, 500)
         .await
         .unwrap();
-    assert_eq!(coins[0].amount, 50u64.into());
+    assert_eq!(coins[0].amount, 500u64.into());
     
     // Deposit 50 native assets
     _swap_contract_instance
         .deposit()
-        .call_params(CallParameters::new(Some(50), None))
+        .call_params(CallParameters::new(Some(500), None))
         .call()
         .await
         .unwrap();
@@ -450,7 +450,7 @@ async fn can_swap() {
     _swap_contract_instance
         .deposit()
         .call_params(CallParameters::new(
-            Some(50),
+            Some(500),
             Some(alt_token_id.clone()),
         ))
         .call()
@@ -469,19 +469,17 @@ async fn can_swap() {
     // Check LP tokens amount to be 50
     assert_eq!(
         wallet
-            .get_spendable_coins(&lp_token_id, 50)
+            .get_spendable_coins(&lp_token_id, 500)
             .await
             .unwrap()[0]
             .amount,
-        50u64.into()
+        500u64.into()
     );
 
-    let amount: u64 = 10;
-
     _swap_contract_instance
-        .swap(5, 5)
+        .swap(50, 5)
         .call_params(CallParameters::new(
-            Some(amount),
+            Some(50),
             Some(alt_token_id.clone()),
         ))
         .append_variable_outputs(1)
