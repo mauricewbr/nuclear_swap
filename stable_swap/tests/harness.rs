@@ -428,6 +428,7 @@ async fn can_swap() {
         .await
         .unwrap();
     assert_eq!(result.value, 10000 - 5000);
+    println!("The balance of the token contract is: {}", result.value);
     
 
     let alt_token_id = AssetId::from(*_token_contract_id.clone());
@@ -461,6 +462,14 @@ async fn can_swap() {
         .await
         .unwrap();
     
+    // Check the balance of the contract of its own asset
+    let result = _swap_contract_instance
+        .get_balance(_swap_contract_id.clone())
+        .call()
+        .await
+        .unwrap();
+    println!("The balance of the swap contract is: {}", result.value);
+    
     // Add initial liquidity, setting proportion 1:1
     // where lp tokens returned should be equal to the eth_amount deposited 50
     _swap_contract_instance
@@ -486,6 +495,7 @@ async fn can_swap() {
         .await
         .unwrap();
     assert_eq!(coins[0].amount, 4500u64.into());
+    println!("Coins: {:?}", coins[0].amount);
     
     let result = _swap_contract_instance
         .swap(50, 5)
