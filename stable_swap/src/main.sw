@@ -56,7 +56,7 @@ abi NuclearSwap {
     fn deposit();
     fn withdraw(amount: u64, asset_id: ContractId);
     fn getVirtualPrice() -> u64;
-    fn swap(i: u64, j: u64, dx: u64, minDy: u64) -> u64;
+    fn swap(dx: u64, minDy: u64) -> u64;
     fn add_liquidity(min_liquidity: u64, deadline: u64) -> u64;
     fn remove_liquidity(min_eth: u64, min_tokens: u64, deadline: u64) -> RemoveLiquidityReturn;
 }
@@ -112,7 +112,7 @@ impl NuclearSwap for Contract {
         }
     }
 
-    fn swap(i: u64, j: u64, dx: u64, minDy: u64) -> u64 {
+    fn swap(dx: u64, minDy: u64) -> u64 {
         assert(i != j);
         assert(msg_asset_id().into() == ETH_ID || msg_asset_id().into() == TOKEN_ID);
 
@@ -122,26 +122,28 @@ impl NuclearSwap for Contract {
 
         // TO DO: IERC20(tokens[i]).transferFrom(msg.sender, address(this), dx);
 
-        // Get new token_in amount:
-        assert(dx >= 0);
-        // New balance token_in = current balance token_in + delta token_in * multiplier
-        // let x: u64 = storage.xpX + dx * storage.multiplierX;
-        
-        // Get current token_out amount:
-        let y0: u64 = get_current_reserve(TOKEN_ID);
+        // Getting current reserves of both tokens
+        let current_reserve_x = get_current_reserve(ETH_ID);
+        let current_reserve_y = get_current_reserve(TOKEN_ID);
         // let y0: u64 = storage.xpY;
 
-        // Get current balances and store in xp
-        let xp: [u64; 2] = [get_current_reserve(ETH_ID), get_current_reserve(TOKEN_ID)];
+        // Get new token_in amount:
+        assert(dx >= 0);
+        let new_reserve_x = current_reserve_x + dx;
+        // New balance token_in = current balance token_in + delta token_in * multiplier
+        // let x: u64 = storage.xpX + dx * storage.multiplierX;
+
+        // Get current balances and store in xp:
+        let xp: [u64; 2] = [current_reserve_x, current_reserve_y];
         //let xp: [u64; 2] = [storage.xpX, storage.xpY];
 
-        // Computing new token_out amount
-        let y1: u64 = _getY(i, j, x, xp);
+        // Computing new token_out amount:
+        let new_reserve_y: u64 = _getY(i, j, new_reserve_x, xp);
 
-        // Computing delta token_out
+        // Computing delta token_out:
         // y0 must be >= y1, since x has increased
         // -1 to round down
-        let mut dy: u64 = (y0 - y1 - 1);
+        let mut dy: u64 = (current_reserve_y - new_reserve_y - 1);
         //let mut dy: u64 = (y0 - y1 - 1) / storage.multiplierY;
 
         // Subtract fee from dy
