@@ -8,15 +8,15 @@ abigen!(NuclearSwap, "out/debug/stable_swap-abi.json");
 abigen!(TestToken,"../token_contract/out/debug/token_contract-abi.json");
 
 struct Metadata {
-    stable_swap: NuclearSwap,
+    swap_contract_instance: NuclearSwap,
     asset: Option<TestToken>,
     wallet: LocalWallet,
 }
 
-async fn get_contract_instance() -> (Metadata, NuclearSwap, ContractId, TestToken, ContractId) {
+async fn get_contract_instance() -> (Metadata, Metadata, Metadata, ContractId, ContractId) {
     // Launch a local network and deploy the contract
     // let wallet = launch_provider_and_get_wallet().await;
-    let num_wallets = 4;
+    let num_wallets = 3;
     let coins_per_wallet = 1;
     let amount_per_coin = 1_000_000;
 
@@ -28,33 +28,39 @@ async fn get_contract_instance() -> (Metadata, NuclearSwap, ContractId, TestToke
 
     let mut wallets = launch_provider_and_get_wallets(config).await;
 
-    let swap_deployer_wallet = wallets.pop().unwrap();
-    let token_deployer_wallet = wallets.pop().unwrap();
+    // let swap_deployer_wallet = wallets.pop().unwrap();
+    let deployer_wallet = wallets.pop().unwrap();
     let lp_wallet = wallets.pop().unwrap();
     let swapper_wallet = wallets.pop().unwrap();
 
-    let swap_contract_id = Contract::deploy("./out/debug/stable_swap.bin", &swap_deployer_wallet, TxParameters::default())
-        .await
-        .unwrap();
+    let swap_contract_id = Contract::deploy("./out/debug/stable_swap.bin", &deployer_wallet, TxParameters::default())
+    .await
+    .unwrap();
+
+    let token_contract_id = Contract::deploy("../token_contract/out/debug/token_contract.bin", &deployer_wallet,
+        TxParameters::default()).await.unwrap();
 
     let deployer = Metadata {
-        swap_contract_instance: NuclearSwap::new(swap_contract_id.to_string(), swap_deployer_wallet.clone()),
-        asset: Some(TestToken::new(asset_id.to_string(), swap_deployer_wallet.clone())),
-        wallet: swap_deployer_wallet,
+        swap_contract_instance: NuclearSwap::new(swap_contract_id.to_string(), deployer_wallet.clone()),
+        asset: Some(TestToken::new(token_contract_id.to_string(), deployer_wallet.clone())),
+        wallet: deployer_wallet,
     };
 
-    // Get the contract ID and a handle to it
-    let token_contract_id =
-        Contract::deploy(
-            "../token_contract/out/debug/token_contract.bin",
-            &token_deployer_wallet,
-            TxParameters::default()
-        )
-        .await
-        .unwrap();
-    let token_contract_instance = TestToken::new(token_contract_id.to_string(), token_deployer_wallet);
+    let lp = Metadata {
+        swap_contract_instance: NuclearSwap::new(swap_contract_id.to_string(), lp_wallet.clone()),
+        asset: Some(TestToken::new(token_contract_id.to_string(), lp_wallet.clone())),
+        wallet: lp_wallet,
+    };
 
-    (deployer, swap_deployer_wallet, token_deployer_wallet, lp_wallet, swapper_wallet, swap_contract_instance, swap_contract_id, token_contract_instance, token_contract_id)
+    let swapper = Metadata {
+        swap_contract_instance: NuclearSwap::new(swap_contract_id.to_string(), swapper_wallet.clone()),
+        asset: Some(TestToken::new(token_contract_id.to_string(), swapper_wallet.clone())),
+        wallet: swapper_wallet,
+    };
+
+    // let token_contract_instance = TestToken::new(token_contract_id.to_string(), deployer_wallet.clone());
+
+    (deployer, lp, swapper, swap_contract_id, token_contract_id)
 }
 
 // #[tokio::test]
@@ -71,29 +77,29 @@ async fn get_contract_instance() -> (Metadata, NuclearSwap, ContractId, TestToke
 //     // Now you have an instance of your contract you can use to test each function
 // }
 
-#[tokio::test]
-async fn can_get_balance() {
-    let (_swap_contract_instance, _swap_contract_id, _token_contract_instance, _token_contract_id) = get_contract_instance().await;
+// #[tokio::test]
+// async fn can_get_balance() {
+//     let (_swap_contract_instance, _swap_contract_id, _token_contract_instance, _token_contract_id) = get_contract_instance().await;
 
-    _swap_contract_instance
-        .deposit()
-        .call_params(CallParameters::new(Some(1000000), None))
-        .call()
-        .await
-        .unwrap();
+//     _swap_contract_instance
+//         .deposit()
+//         .call_params(CallParameters::new(Some(1000000), None))
+//         .call()
+//         .await
+//         .unwrap();
 
-    // Native asset id
-    let native_asset_id = ContractId::new(*NATIVE_ASSET_ID);
+//     // Native asset id
+//     let native_asset_id = ContractId::new(*NATIVE_ASSET_ID);
 
-    let response = _swap_contract_instance
-        .get_balance(native_asset_id)
-        .call()
-        .await
-        .unwrap();
+//     let response = _swap_contract_instance
+//         .get_balance(native_asset_id)
+//         .call()
+//         .await
+//         .unwrap();
     // assert_eq!(response.value, 1000);
 
     // Now you have an instance of your contract you can use to test each function
-}
+// }
 
 // #[tokio::test]
 // async fn can_withdraw() {
