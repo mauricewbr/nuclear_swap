@@ -123,18 +123,17 @@ impl NuclearSwap for Contract {
         // TO DO: IERC20(tokens[i]).transferFrom(msg.sender, address(this), dx);
 
         // Get new token_in amount:
-        let eth_amount_key = key_deposits(sender, ETH_ID);
-        let current_eth_amount = get::<u64>(eth_amount_key);
         assert(dx >= 0);
-        add_reserve(ETH_ID, dx);
         // New balance token_in = current balance token_in + delta token_in * multiplier
         // let x: u64 = storage.xpX + dx * storage.multiplierX;
         
         // Get current token_out amount:
-        let y0: u64 = storage.xpY;
+        let y0: u64 = get_current_reserve(TOKEN_ID);
+        // let y0: u64 = storage.xpY;
 
         // Get current balances and store in xp
-        let xp: [u64; 2] = [storage.xpX, storage.xpY];
+        let xp: [u64; 2] = [get_current_reserve(ETH_ID), get_current_reserve(TOKEN_ID)];
+        //let xp: [u64; 2] = [storage.xpX, storage.xpY];
 
         // Computing new token_out amount
         let y1: u64 = _getY(i, j, x, xp);
@@ -142,7 +141,8 @@ impl NuclearSwap for Contract {
         // Computing delta token_out
         // y0 must be >= y1, since x has increased
         // -1 to round down
-        let mut dy: u64 = (y0 - y1 - 1) / storage.multiplierY;
+        let mut dy: u64 = (y0 - y1 - 1);
+        //let mut dy: u64 = (y0 - y1 - 1) / storage.multiplierY;
 
         // Subtract fee from dy
         let fee: u64 = (dy * storage.SWAP_FEE) / storage.FEE_DENOMINATOR;
@@ -151,8 +151,10 @@ impl NuclearSwap for Contract {
 
         // TO DO: balances[i] += dx;
         // TO DO: balances[j] -= dy;
-        storage.balanceX = storage.balanceX + dx;
-        storage.balanceY = storage.balanceY + dy;
+        add_reserve(ETH_ID, dx);
+        remove_reserve(TOKEN_ID, dx);
+        // storage.balanceX = storage.balanceX + dx;
+        // storage.balanceY = storage.balanceY + dy;
         // TO DO: IERC20(tokens[j]).transfer(msg.sender, dy);
 
         dy
