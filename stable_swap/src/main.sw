@@ -239,9 +239,10 @@ impl NuclearSwap for Contract {
         burn(msg_amount());
         storage.lp_token_supply = total_liquidity - msg_amount();
 
-        // Add fund to the reservers
+        // Remove funds from the reserve
         remove_reserve(TOKEN_ID, token_amount);
         remove_reserve(ETH_ID, eth_amount);
+        
         // Send tokens back
         transfer_to_output(eth_amount, ~ContractId::from(ETH_ID), sender);
         transfer_to_output(token_amount, ~ContractId::from(TOKEN_ID), sender);
@@ -260,6 +261,7 @@ fn exp(base: u64, exponent: u64) -> u64 {
     }
 }
 
+// XXX -> _mint and _burn can be removed
 fn _mint(amount: u64, recipient: Address) {
     mint_to_address(amount, recipient);
 }
