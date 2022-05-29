@@ -455,7 +455,7 @@ async fn can_swap() {
         .call()
         .await
         .unwrap();
-    println!("After native deposit swap contract balances: {:?}", balances);
+    println!("After native deposit swap contract balances: {:?}\n", balances);
 
     // deposit 50 alt tokens into the Exchange contract
     _swap_contract_instance
@@ -474,7 +474,7 @@ async fn can_swap() {
         .call()
         .await
         .unwrap();
-    println!("After alt deposit swap contract balances: {:?}", balances);
+    println!("After alt deposit swap contract balances: {:?}\n", balances);
     
     // Add initial liquidity, setting proportion 1:1
     // where lp tokens returned should be equal to the eth_amount deposited 50
@@ -521,12 +521,12 @@ async fn can_swap() {
         .call()
         .await
         .unwrap();
-    println!("All swap contract balances: {:?}", balances);
+    println!("All swap contract balances: {:?}\n", balances);
 
     let balances = _token_contract_instance
-        .get_balance(_token_contract_id, _token_contract_id)
+        .get_balances(_token_contract_id, _token_contract_id)
         .call()
         .await
         .unwrap();
-    println!("All token contract balances: {:?}", balances);
+    println!("All token contract balances: {:?}\n", balances);
 }
