@@ -5,7 +5,7 @@ use fuels::test_helpers;
 
 // Load abi from json
 abigen!(MyContract, "out/debug/stable_swap-abi.json");
-abigen!(TestToken, "tests/artifacts/asset/out/debug/asset-abi.json");
+abigen!(TestToken,"../token_contract/out/debug/token_contract-abi.json");
 
 async fn get_contract_instance() -> (MyContract, ContractId, TestToken, ContractId) {
     // Launch a local network and deploy the contract
@@ -76,7 +76,7 @@ async fn can_withdraw() {
     // Depost some native assets
     _swap_contract_instance
         .deposit()
-        .call_params(CallParameters::new(Some(100), None))
+        .call_params(CallParameters::new(Some(11), None))
         .call()
         .await
         .unwrap();
@@ -90,10 +90,10 @@ async fn can_withdraw() {
         .call()
         .await
         .unwrap();
-    assert_eq!(response.value, 100);
+    assert_eq!(response.value, 11);
 
     _swap_contract_instance
-        .withdraw(100, native_asset_id.clone())
+        .withdraw(11, native_asset_id.clone())
         .append_variable_outputs(1)
         .call()
         .await
@@ -574,7 +574,6 @@ async fn can_swap() {
     */
 }
 
-/*
 #[tokio::test]
 async fn can_add_liquidity_to_existing_supply() {
     // Launch a local network and deploy the contract
@@ -753,7 +752,7 @@ async fn can_add_liquidity_to_existing_supply() {
         .await
         .unwrap();
     assert_eq!(coins[0].amount, 450000u64.into());
-    
+    /*
     // Deposit 50 native assets
     _swap_contract_instance
         .deposit()
@@ -826,5 +825,5 @@ async fn can_add_liquidity_to_existing_supply() {
         50000u64.into()
     );
     */
+    */
 }
-*/

@@ -1,4 +1,4 @@
-library math_lib;
+library ns_lib;
 
 pub fn abs(x: u64, y: u64) -> u64 {
     let mut res: u64 = 0;
