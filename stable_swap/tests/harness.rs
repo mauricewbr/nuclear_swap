@@ -429,6 +429,10 @@ async fn can_swap() {
 
     let alt_token_id = AssetId::from(*_token_contract_id.clone());
     let lp_token_id = AssetId::from(*_swap_contract_id.clone());
+    // Native asset id
+    let native_asset_id = ContractId::new(*NATIVE_ASSET_ID);
+    // Alt asset id
+    let alt_asset_id = ContractId::new(*alt_token_id);
     
     // Inspect the wallet for alt tokens
     let coins = wallet
@@ -447,15 +451,12 @@ async fn can_swap() {
         .unwrap();
     println!("Total amount being deposited to Swap Contract: {:?}\n", log.logs);
 
-    // Native asset id
-    let native_asset_id = ContractId::new(*NATIVE_ASSET_ID);
-
     let response = _swap_contract_instance
         .get_balance(native_asset_id)
         .call()
         .await
         .unwrap();
-    println!("{:?}\n", response.value);
+    println!("Native token balance: {:?}\n", response.value);
 
     // deposit 50 alt tokens into the Exchange contract
     _swap_contract_instance
@@ -469,31 +470,38 @@ async fn can_swap() {
         .await
         .unwrap();
 
-    // Native asset id
-    let alt_asset_id = ContractId::new(*alt_token_id);
+    let response = _swap_contract_instance
+        .get_balance(alt_asset_id)
+        .call()
+        .await
+        .unwrap();
+    println!("Alt token balance: {:?}\n", response.value);
+    
+    // Add initial liquidity, setting proportion 1:1
+    // where lp tokens returned should be equal to the eth_amount deposited 50
+    let log = _swap_contract_instance
+        .add_liquidity(1, 1000)
+        .append_variable_outputs(1)
+        .call()
+        .await
+        .unwrap();
+
+    let response = _swap_contract_instance
+        .get_balance(native_asset_id)
+        .call()
+        .await
+        .unwrap();
+    println!("Native token balance: {:?}\n", response.value);
 
     let response = _swap_contract_instance
         .get_balance(alt_asset_id)
         .call()
         .await
         .unwrap();
-    println!("{:?}\n", response.value);
-
-    let balances = _swap_contract_instance
-        .get_balances(_swap_contract_id, _swap_contract_id)
-        .call()
-        .await
-        .unwrap();
-    println!("After alt deposit swap contract balances: {:?}\n", balances);
+    println!("Alt token balance: {:?}\n", response.value);
     
-    // Add initial liquidity, setting proportion 1:1
-    // where lp tokens returned should be equal to the eth_amount deposited 50
-    _swap_contract_instance
-        .add_liquidity(1, 1000)
-        .append_variable_outputs(1)
-        .call()
-        .await
-        .unwrap();
+    // Logging the token reserves after the add_liquidity
+    println!("After add_liquidity: {:?}\n", log.logs);
 
     // Check LP tokens amount to be 50
     assert_eq!(
@@ -532,6 +540,7 @@ async fn can_swap() {
         .unwrap();
     assert!(result.value > 0);
     println!("Result is {}", result.value);
+    println!("{:?}", result.logs);
 
     let balances = _swap_contract_instance
         .get_balances(_swap_contract_id, _swap_contract_id)

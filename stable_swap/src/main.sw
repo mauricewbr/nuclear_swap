@@ -70,9 +70,14 @@ abi NuclearSwap {
     fn swap(dx: u64, minDy: u64) -> u64;
     fn add_liquidity(min_liquidity: u64, deadline: u64) -> u64;
     fn remove_liquidity(min_eth: u64, min_tokens: u64, deadline: u64) -> RemoveLiquidityReturn;
+    fn test_current_reserve(token_id: b256) -> u64;
 }
 
 impl NuclearSwap for Contract {
+    fn test_current_reserve(token_id: b256) -> u64 {
+        get::<u64>(token_id)
+    }
+
     fn get_balance(token: ContractId) -> u64 {
         let sender = get_msg_sender_address_or_panic();
         let key = key_deposits(sender, token.into());
@@ -148,6 +153,9 @@ impl NuclearSwap for Contract {
         let current_reserve_x = get_current_reserve(ETH_ID);
         let current_reserve_y = get_current_reserve(TOKEN_ID);
 
+        log(Logger{amount: current_reserve_x});
+        log(Logger{amount: current_reserve_y});
+
         // Get new token_in amount:
         assert(dx >= 0);
         let new_reserve_x = current_reserve_x + dx;
@@ -171,6 +179,13 @@ impl NuclearSwap for Contract {
         add_reserve(ETH_ID, dx);
         remove_reserve(TOKEN_ID, dy);
         // TO DO: IERC20(tokens[j]).transfer(msg.sender, dy);
+
+        // Getting new reserves of both tokens
+        let new_reserve_x = get_current_reserve(ETH_ID);
+        let new_reserve_y = get_current_reserve(TOKEN_ID);
+
+        log(Logger{amount: new_reserve_x});
+        log(Logger{amount: new_reserve_y});
 
         dy
     }
@@ -272,6 +287,9 @@ impl NuclearSwap for Contract {
             // Transfering LP token to user balance
             transfer_to_output(initial_liquidity, contract_id(), sender);
             minted = initial_liquidity;
+
+            log(Logger{amount: get_current_reserve(ETH_ID)});
+            log(Logger{amount: get_current_reserve(TOKEN_ID)});
         }
 
         // Clear user contract balances after finishing add / create liquidity
