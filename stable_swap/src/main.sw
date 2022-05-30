@@ -1,38 +1,39 @@
 contract;
 
 use ns_lib::abs; // needs to be added
-use std::address::*;
-use std::assert::assert;
-use std::block::*;
-use std::chain::auth::*;
-use std::contract_id::ContractId;
-use std::context::{*, call_frames::*};
-use std::hash::*;
-use std::logging::log;
-use std::result::*;
-use std::revert::revert;
-use std::token::*;
-use std::storage::*;
-use std::math::*;
+
+use std::{
+    address::*,
+    assert::assert,
+    block::*,
+    chain::auth::*,
+    contract_id::ContractId,
+    context::{*, call_frames::*},
+    hash::*,
+    logging::log,
+    result::*,
+    revert::revert,
+    token::*,
+    storage::*,
+    math::*
+};
 
 storage {
-    //N: u64,
     totalSupply: u64,
-    //xpX: u64,
-    //xpY: u64,
-    //multiplierX: u64,
-    //multiplierY: u64,
-    //balanceX: u64,
-    //balanceY: u64,
-    //SWAP_FEE: u64,
-    //LIQUIDITY_FEE: u64,
-    //FEE_DENOMINATOR: u64,
     lp_token_supply: u64,
 }
 
 pub struct RemoveLiquidityReturn {
     eth_amount: u64,
     token_amount: u64,
+}
+
+pub struct Logger {
+    amount: u64
+}
+
+pub struct SenderLog {
+    sender: Address
 }
 
 // Token ID of Ether
@@ -90,6 +91,13 @@ impl NuclearSwap for Contract {
         let key = key_deposits(sender, msg_asset_id().into());
         let total_amount = get::<u64>(key) + msg_amount();
 
+        log(SenderLog {sender: sender});
+        log(msg_asset_id());
+
+        log(Logger{
+            amount: total_amount
+        });
+
         store(key, total_amount);
     }
 
@@ -139,16 +147,13 @@ impl NuclearSwap for Contract {
         // Getting current reserves of both tokens
         let current_reserve_x = get_current_reserve(ETH_ID);
         let current_reserve_y = get_current_reserve(TOKEN_ID);
-        // let y0: u64 = storage.xpY;
 
         // Get new token_in amount:
         assert(dx >= 0);
         let new_reserve_x = current_reserve_x + dx;
-        // let x: u64 = storage.xpX + dx * storage.multiplierX;
 
         // Get current balances and store in xp:
         let xp: [u64; 2] = [current_reserve_x, current_reserve_y];
-        //let xp: [u64; 2] = [storage.xpX, storage.xpY];
 
         // Computing new token_out amount:
         let new_reserve_y: u64 = _getY(i, j, new_reserve_x, xp);
@@ -157,19 +162,14 @@ impl NuclearSwap for Contract {
         // y0 must be >= y1, since x has increased
         // -1 to round down
         let mut dy: u64 = (current_reserve_y - new_reserve_y - 1);
-        //let mut dy: u64 = (y0 - y1 - 1) / storage.multiplierY;
 
         // Subtract fee from dy
         //let fee: u64 = (dy * SWAP_FEE) / FEE_DENOMINATOR;
         //dy = dy - fee;
         assert(dy >= minDy);
 
-        // TO DO: balances[i] += dx;
-        // TO DO: balances[j] -= dy;
         add_reserve(ETH_ID, dx);
         remove_reserve(TOKEN_ID, dy);
-        // storage.balanceX = storage.balanceX + dx;
-        // storage.balanceY = storage.balanceY + dy;
         // TO DO: IERC20(tokens[j]).transfer(msg.sender, dy);
 
         dy

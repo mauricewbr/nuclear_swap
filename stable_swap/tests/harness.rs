@@ -391,14 +391,10 @@ async fn can_swap() {
     let _swap_contract_instance = MyContract::new(_swap_contract_id.to_string(), wallet.clone());
 
     // Get the contract ID and a handle to it
-    let _token_contract_id =
-        Contract::deploy(
-            "../token_contract/out/debug/token_contract.bin",
-            &wallet,
-            TxParameters::default()
-        )
+    let _token_contract_id = Contract::deploy("../token_contract/out/debug/token_contract.bin", &wallet, TxParameters::default())
         .await
         .unwrap();
+
     let _token_contract_instance = TestToken::new(_token_contract_id.to_string(), wallet.clone());
     
     // Mint some alt tokens
@@ -442,20 +438,24 @@ async fn can_swap() {
     assert_eq!(coins[0].amount, 5000u64.into());
     
     // Deposit 50 native assets
-    _swap_contract_instance
+    let log = _swap_contract_instance
         .deposit()
         .append_variable_outputs(1)
         .call_params(CallParameters::new(Some(500), None))
         .call()
         .await
         .unwrap();
+    println!("Total amount being deposited to Swap Contract: {:?}\n", log.logs);
 
-    let balances = _swap_contract_instance
-        .get_balances(_swap_contract_id, _swap_contract_id)
+    // Native asset id
+    let native_asset_id = ContractId::new(*NATIVE_ASSET_ID);
+
+    let response = _swap_contract_instance
+        .get_balance(native_asset_id)
         .call()
         .await
         .unwrap();
-    println!("After native deposit swap contract balances: {:?}\n", balances);
+    println!("{:?}\n", response.value);
 
     // deposit 50 alt tokens into the Exchange contract
     _swap_contract_instance
@@ -468,6 +468,16 @@ async fn can_swap() {
         .call()
         .await
         .unwrap();
+
+    // Native asset id
+    let alt_asset_id = ContractId::new(*alt_token_id);
+
+    let response = _swap_contract_instance
+        .get_balance(alt_asset_id)
+        .call()
+        .await
+        .unwrap();
+    println!("{:?}\n", response.value);
 
     let balances = _swap_contract_instance
         .get_balances(_swap_contract_id, _swap_contract_id)
@@ -502,6 +512,13 @@ async fn can_swap() {
         .unwrap();
     assert_eq!(coins[0].amount, 4500u64.into());
     println!("Coins: {:?}", coins[0].amount);
+
+    /*
+    for (_utxo_id, coin) in coins {
+        let balance = wallet.get_asset_balance(&coin.asset_id).await;
+        // assert_eq!(balance.unwrap(), 231);
+    }
+    */
     
     let result = _swap_contract_instance
         .swap(50, 5)
@@ -523,10 +540,12 @@ async fn can_swap() {
         .unwrap();
     println!("All swap contract balances: {:?}\n", balances);
 
+    /*
     let balances = _token_contract_instance
         .get_balances(_token_contract_id, _token_contract_id)
         .call()
         .await
         .unwrap();
     println!("All token contract balances: {:?}\n", balances);
+    */
 }
