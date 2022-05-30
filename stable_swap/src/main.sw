@@ -136,6 +136,9 @@ impl NuclearSwap for Contract {
     */
 
     fn swap(dx: u64, minDy: u64) -> u64 {
+        let FEE_DENOMINATOR = exp(10,6);
+        let LIQUIDITY_FEE = (SWAP_FEE * N) / (4 * (N - 1));
+        
         // assert(i != j);
         let i = 0;
         let j = 1;
@@ -171,7 +174,9 @@ impl NuclearSwap for Contract {
         // -1 to round down
         let mut dy: u64 = (current_reserve_y - new_reserve_y - 1);
 
-        // Subtract fee from dy
+        // Subtract fee (0.03%) from dy
+        let fee = (dy * 30000) / 1000000;
+        dy = dy - fee;
         //let fee: u64 = (dy * SWAP_FEE) / FEE_DENOMINATOR;
         //dy = dy - fee;
         assert(dy >= minDy);
@@ -197,7 +202,7 @@ impl NuclearSwap for Contract {
         assert(msg_asset_id().into() == ETH_ID || msg_asset_id().into() == TOKEN_ID);
 
         let FEE_DENOMINATOR = exp(10,6);
-        let LIQUIDITY_FEE = (SWAP_FEE * N) / (5 * (N - 1));
+        let LIQUIDITY_FEE = (SWAP_FEE * N) / (4 * (N - 1));
 
         let sender = get_msg_sender_address_or_panic();
         let total_liquidity = storage.lp_token_supply;

@@ -398,7 +398,7 @@ async fn can_swap() {
     let _token_contract_instance = TestToken::new(_token_contract_id.to_string(), wallet.clone());
     
     // Mint some alt tokens
-    _token_contract_instance.mint_coins(10000).call().await.unwrap();
+    _token_contract_instance.mint_coins(1000000).call().await.unwrap();
 
     // Check the balance of the contract of its own asset
     let result = _token_contract_instance
@@ -406,12 +406,12 @@ async fn can_swap() {
         .call()
         .await
         .unwrap();
-    assert_eq!(result.value, 10000);
+    assert_eq!(result.value, 1000000);
 
     // Transfer some alt tokens to the wallet
     let address = wallet.address();
     let _t = _token_contract_instance
-        .transfer_coins_to_output(5000, _token_contract_id.clone(), address.clone())
+        .transfer_coins_to_output(500000, _token_contract_id.clone(), address.clone())
         .append_variable_outputs(1)
         .call()
         .await
@@ -423,7 +423,7 @@ async fn can_swap() {
         .call()
         .await
         .unwrap();
-    assert_eq!(result.value, 10000 - 5000);
+    assert_eq!(result.value, 1000000 - 500000);
     println!("The balance of the token contract is: {}", result.value);
     
 
@@ -437,16 +437,16 @@ async fn can_swap() {
     
     // Inspect the wallet for alt tokens
     let coins = wallet
-        .get_spendable_coins(&alt_token_id, 500)
+        .get_spendable_coins(&alt_token_id, 50000)
         .await
         .unwrap();
-    assert_eq!(coins[0].amount, 5000u64.into());
+    assert_eq!(coins[0].amount, 500000u64.into());
     
     // Deposit 50 native assets
     let log = _swap_contract_instance
         .deposit()
         .append_variable_outputs(1)
-        .call_params(CallParameters::new(Some(500), None))
+        .call_params(CallParameters::new(Some(50000), None))
         .call()
         .await
         .unwrap();
@@ -464,7 +464,7 @@ async fn can_swap() {
         .deposit()
         .append_variable_outputs(1)
         .call_params(CallParameters::new(
-            Some(500),
+            Some(50000),
             Some(alt_token_id.clone()),
         ))
         .call()
@@ -507,19 +507,19 @@ async fn can_swap() {
     // Check LP tokens amount to be 50
     assert_eq!(
         wallet
-            .get_spendable_coins(&lp_token_id, 500)
+            .get_spendable_coins(&lp_token_id, 50000)
             .await
             .unwrap()[0]
             .amount,
-        500u64.into()
+        50000u64.into()
     );
 
     // Inspect the wallet for alt tokens
     let coins = wallet
-        .get_spendable_coins(&alt_token_id, 500)
+        .get_spendable_coins(&alt_token_id, 50000)
         .await
         .unwrap();
-    assert_eq!(coins[0].amount, 4500u64.into());
+    assert_eq!(coins[0].amount, 450000u64.into());
     println!("Coins: {:?}", coins[0].amount);
 
     /*
@@ -530,9 +530,9 @@ async fn can_swap() {
     */
     
     let result = _swap_contract_instance
-        .swap(50, 5)
+        .swap(5000, 5)
         .call_params(CallParameters::new(
-            Some(50),
+            Some(5000),
             Some(native_token_id.clone()),
         ))
         .append_variable_outputs(1)
@@ -557,5 +557,259 @@ async fn can_swap() {
         .await
         .unwrap();
     println!("All token contract balances: {:?}\n", balances);
+    */
+}
+
+#[tokio::test]
+async fn can_add_liquidity_to_existing_supply() {
+    // Launch a local network and deploy the contract
+    let wallet = launch_provider_and_get_wallet().await;
+
+    let _swap_contract_id = Contract::deploy("./out/debug/stable_swap.bin", &wallet, TxParameters::default())
+        .await
+        .unwrap();
+
+    let _swap_contract_instance = MyContract::new(_swap_contract_id.to_string(), wallet.clone());
+
+    // Get the contract ID and a handle to it
+    let _token_contract_id = Contract::deploy("../token_contract/out/debug/token_contract.bin", &wallet, TxParameters::default())
+        .await
+        .unwrap();
+
+    let _token_contract_instance = TestToken::new(_token_contract_id.to_string(), wallet.clone());
+
+    let alt_token_id = AssetId::from(*_token_contract_id.clone());
+    let lp_token_id = AssetId::from(*_swap_contract_id.clone());
+    let native_token_id = AssetId::from(*NATIVE_ASSET_ID);
+    // Native asset id
+    let native_asset_id = ContractId::new(*NATIVE_ASSET_ID);
+    // Alt asset id
+    let alt_asset_id = ContractId::new(*alt_token_id);
+    
+    // Mint some alt tokens
+    _token_contract_instance.mint_coins(1000000).call().await.unwrap();
+
+    // Check the balance of the contract of its own asset
+    let result = _token_contract_instance
+        .get_balance(_token_contract_id.clone(), _token_contract_id.clone())
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(result.value, 1000000);
+
+    // Transfer some alt tokens to the wallet
+    let address = wallet.address();
+    let _t = _token_contract_instance
+        .transfer_coins_to_output(500000, _token_contract_id.clone(), address.clone())
+        .append_variable_outputs(1)
+        .call()
+        .await
+        .unwrap();
+    
+    // Check the balance of the contract of its own asset
+    let result = _token_contract_instance
+        .get_balance(_token_contract_id.clone(), _token_contract_id.clone())
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(result.value, 1000000 - 500000);
+    println!("The balance of the token contract is: {}", result.value);
+    
+    // Inspect the wallet for alt tokens
+    let coins = wallet
+        .get_spendable_coins(&alt_token_id, 50000)
+        .await
+        .unwrap();
+    assert_eq!(coins[0].amount, 500000u64.into());
+    
+    // Deposit 50 native assets
+    _swap_contract_instance
+        .deposit()
+        .append_variable_outputs(1)
+        .call_params(CallParameters::new(Some(50000), None))
+        .call()
+        .await
+        .unwrap();
+
+    let response = _swap_contract_instance
+        .get_balance(native_asset_id)
+        .call()
+        .await
+        .unwrap();
+    println!("Native token balance: {:?}\n", response.value);
+
+    // deposit 50 alt tokens into the Exchange contract
+    _swap_contract_instance
+        .deposit()
+        .append_variable_outputs(1)
+        .call_params(CallParameters::new(
+            Some(50000),
+            Some(alt_token_id.clone()),
+        ))
+        .call()
+        .await
+        .unwrap();
+
+    let response = _swap_contract_instance
+        .get_balance(alt_asset_id)
+        .call()
+        .await
+        .unwrap();
+    println!("Alt token balance: {:?}\n", response.value);
+    
+    // Add initial liquidity, setting proportion 1:1
+    // where lp tokens returned should be equal to the eth_amount deposited 50
+    let log = _swap_contract_instance
+        .add_liquidity(1, 1000)
+        .append_variable_outputs(1)
+        .call()
+        .await
+        .unwrap();
+
+    let response = _swap_contract_instance
+        .get_balance(native_asset_id)
+        .call()
+        .await
+        .unwrap();
+    println!("Native token balance: {:?}\n", response.value);
+
+    let response = _swap_contract_instance
+        .get_balance(alt_asset_id)
+        .call()
+        .await
+        .unwrap();
+    println!("Alt token balance: {:?}\n", response.value);
+    
+    // Logging the token reserves after the add_liquidity
+    println!("After add_liquidity: {:?}\n", log.logs);
+
+    // Check LP tokens amount to be 50
+    assert_eq!(
+        wallet
+            .get_spendable_coins(&lp_token_id, 50000)
+            .await
+            .unwrap()[0]
+            .amount,
+        50000u64.into()
+    );
+    
+    // ADDING LIQUIDITY SECOND TIME
+
+    let alt_token_id = AssetId::from(*_token_contract_id.clone());
+    let lp_token_id = AssetId::from(*_swap_contract_id.clone());
+    let native_token_id = AssetId::from(*NATIVE_ASSET_ID);
+    // Native asset id
+    let native_asset_id = ContractId::new(*NATIVE_ASSET_ID);
+    // Alt asset id
+    let alt_asset_id = ContractId::new(*alt_token_id);
+    
+    // Mint some alt tokens
+    _token_contract_instance.mint_coins(1000000).call().await.unwrap();
+
+    // Check the balance of the contract of its own asset
+    let result = _token_contract_instance
+        .get_balance(_token_contract_id.clone(), _token_contract_id.clone())
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(result.value, 1500000);
+    
+    // Transfer some alt tokens to the wallet
+    let address = wallet.address();
+    let _t = _token_contract_instance
+        .transfer_coins_to_output(500000, _token_contract_id.clone(), address.clone())
+        .append_variable_outputs(1)
+        .call()
+        .await
+        .unwrap();
+    
+    // Check the balance of the contract of its own asset
+    let result = _token_contract_instance
+        .get_balance(_token_contract_id.clone(), _token_contract_id.clone())
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(result.value, 1500000 - 500000);
+    println!("The balance of the token contract is: {}", result.value);
+    
+    // Inspect the wallet for alt tokens
+    let coins = wallet
+        .get_spendable_coins(&alt_token_id, 50000)
+        .await
+        .unwrap();
+    assert_eq!(coins[0].amount, 450000u64.into());
+    /*
+    // Deposit 50 native assets
+    _swap_contract_instance
+        .deposit()
+        .append_variable_outputs(1)
+        .call_params(CallParameters::new(Some(50000), None))
+        .call()
+        .await
+        .unwrap();
+
+    let response = _swap_contract_instance
+        .get_balance(native_asset_id)
+        .call()
+        .await
+        .unwrap();
+    println!("Native token balance: {:?}\n", response.value);
+
+    // deposit 50 alt tokens into the Exchange contract
+    _swap_contract_instance
+        .deposit()
+        .append_variable_outputs(1)
+        .call_params(CallParameters::new(
+            Some(50000),
+            Some(alt_token_id.clone()),
+        ))
+        .call()
+        .await
+        .unwrap();
+
+    let response = _swap_contract_instance
+        .get_balance(alt_asset_id)
+        .call()
+        .await
+        .unwrap();
+    println!("Alt token balance: {:?}\n", response.value);
+    
+    // Add initial liquidity, setting proportion 1:1
+    // where lp tokens returned should be equal to the eth_amount deposited 50
+    let log = _swap_contract_instance
+        .add_liquidity(1, 1000)
+        .append_variable_outputs(1)
+        .call()
+        .await
+        .unwrap();
+
+    let response = _swap_contract_instance
+        .get_balance(native_asset_id)
+        .call()
+        .await
+        .unwrap();
+    println!("Native token balance: {:?}\n", response.value);
+
+    let response = _swap_contract_instance
+        .get_balance(alt_asset_id)
+        .call()
+        .await
+        .unwrap();
+    println!("Alt token balance: {:?}\n", response.value);
+    
+    // Logging the token reserves after the add_liquidity
+    println!("After add_liquidity: {:?}\n", log.logs);
+
+    // Check LP tokens amount to be 50
+    /*
+    assert_eq!(
+        wallet
+            .get_spendable_coins(&lp_token_id, 50000)
+            .await
+            .unwrap()[0]
+            .amount,
+        50000u64.into()
+    );
+    */
     */
 }
