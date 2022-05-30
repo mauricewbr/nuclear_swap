@@ -15,6 +15,10 @@ use std::token::*;
 use std::storage::*;
 use std::math::*;
 
+pub struct Logger {
+    amount: u64,
+}
+
 storage {
     //N: u64,
     totalSupply: u64,
@@ -55,14 +59,14 @@ const MINIMUM_LIQUIDITY = 1; //A more realistic value would be 1000000000;
 //const LIQUIDITY_FEE = 1;
 
 //FEE_DENOMINATOR: u64,
-//const 
+//const
 
 // const DECIMALS: u64 = 10**18;
 
 abi NuclearSwap {
     fn get_balance(token: ContractId) -> u64;
     // fn get_balances(target: ContractId, asset_id: ContractId) -> u64;
-    fn deposit();
+    fn deposit() -> u64;
     fn withdraw(amount: u64, asset_id: ContractId);
     //fn getVirtualPrice() -> u64;
     fn swap(dx: u64, minDy: u64) -> u64;
@@ -83,7 +87,7 @@ impl NuclearSwap for Contract {
     }
     */
 
-    fn deposit() {
+    fn deposit() -> u64 {
         assert(msg_asset_id().into() == ETH_ID || msg_asset_id().into() == TOKEN_ID);
 
         let sender = get_msg_sender_address_or_panic();
@@ -92,6 +96,7 @@ impl NuclearSwap for Contract {
         let total_amount = get::<u64>(key) + msg_amount();
 
         store(key, total_amount);
+        total_amount
     }
 
     fn withdraw(amount: u64, asset_id: ContractId) {
@@ -127,7 +132,7 @@ impl NuclearSwap for Contract {
         // assert(i != j);
         let i = 0;
         let j = 1;
-        // remove i and j 
+        // remove i and j
 
         assert(msg_asset_id().into() == ETH_ID || msg_asset_id().into() == TOKEN_ID);
 
@@ -141,14 +146,17 @@ impl NuclearSwap for Contract {
         let current_reserve_x = get_current_reserve(ETH_ID);
         let current_reserve_y = get_current_reserve(TOKEN_ID);
         // let y0: u64 = storage.xpY;
-
+        log(Logger {
+            amount: current_reserve_x
+        });
         // Get new token_in amount:
         assert(dx >= 0);
         let new_reserve_x = current_reserve_x + dx;
         // let x: u64 = storage.xpX + dx * storage.multiplierX;
 
         // Get current balances and store in xp:
-        let xp: [u64; 2] = [current_reserve_x, current_reserve_y];
+        let xp: [u64;
+        2] = [current_reserve_x, current_reserve_y];
         //let xp: [u64; 2] = [storage.xpX, storage.xpY];
 
         // Computing new token_out amount:
@@ -302,7 +310,8 @@ fn _burn(amount: u64) {
     burn(amount);
 }
 
-fn _getYD(i: u64, xp: [u64; 2], d: u64) -> u64 {
+fn _getYD(i: u64, xp: [u64;
+2], d: u64) -> u64 {
     // XXX -> N = 2
     let N = 2;
     // let N: u64 = storage.N;
@@ -342,7 +351,8 @@ fn _getYD(i: u64, xp: [u64; 2], d: u64) -> u64 {
     y
 }
 
-fn _getY(i: u64, j: u64, x: u64, xp: [u64; 2]) -> u64 {
+fn _getY(i: u64, j: u64, x: u64, xp: [u64;
+2]) -> u64 {
     // let A: u64 = (1000 * (N**(N-1)));
     // following A needs to be replaced by commented A
     // XXX -> N = 2 should be dynamic
@@ -388,7 +398,8 @@ fn _getY(i: u64, j: u64, x: u64, xp: [u64; 2]) -> u64 {
     y // revert("y didn't converge");
 }
 
-fn _getD(xp: [u64; 2]) -> u64 {
+fn _getD(xp: [u64;
+2]) -> u64 {
     // N: Number of tokens
     // A: Amplification coefficient multiplied by N^(N-1)
     let current_reserve_x = get_current_reserve(ETH_ID);
@@ -400,7 +411,8 @@ fn _getD(xp: [u64; 2]) -> u64 {
     let A: u64 = (1000 * (exp(N, N - 1)));
     let a: u64 = A * N;
     let mut i = 0;
-    let xp: [u64; 2] = [current_reserve_x, current_reserve_y];
+    let xp: [u64;
+    2] = [current_reserve_x, current_reserve_y];
     let mut s: u64 = xp[0];
     while i < N {
         s = s + xp[i];
