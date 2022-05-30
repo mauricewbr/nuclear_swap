@@ -529,8 +529,8 @@ async fn can_swap() {
     }
     */
     
-    let result = _swap_contract_instance
-        .swap(5000, 5)
+    let result_native = _swap_contract_instance
+        .swap(50, 5)
         .call_params(CallParameters::new(
             Some(5000),
             Some(native_token_id.clone()),
@@ -539,9 +539,9 @@ async fn can_swap() {
         .call()
         .await
         .unwrap();
-    assert!(result.value > 0);
-    println!("Result is {}", result.value);
-    println!("Token X and Token Y BEFORE and AFTER the swap: {:?}", result.logs);
+    assert!(result_native.value > 0);
+    println!("Result is {}", result_native.value);
+    println!("Token Native and Token Alt BEFORE and AFTER the swap: {:?}", result_native.logs);
 
     let balances = _swap_contract_instance
         .get_balances(_swap_contract_id, _swap_contract_id)
@@ -550,6 +550,20 @@ async fn can_swap() {
         .unwrap();
     println!("All swap contract balances: {:?}\n", balances);
 
+    let result_alt = _swap_contract_instance
+        .swap(50, 5)
+        .call_params(CallParameters::new(
+            Some(50),
+            Some(alt_token_id.clone()),
+        ))
+        .append_variable_outputs(1)
+        .call()
+        .await
+        .unwrap();
+    assert!(result_alt.value > 0);
+    println!("Result is {}", result_alt.value);
+    println!("Token Alt and Token Native BEFORE and AFTER the swap: {:?}", result_alt.logs);
+    
     /*
     let balances = _token_contract_instance
         .get_balances(_token_contract_id, _token_contract_id)
