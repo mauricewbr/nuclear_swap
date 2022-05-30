@@ -1,5 +1,5 @@
 [project]
-name = "ns_lib"
+name = "math_lib"
 version = "0.1.0"
 authors = ["Maurice Weber"]
 edition = "2021"

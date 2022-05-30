@@ -1,8 +1,7 @@
 [project]
-name = "stable_swap"
+name = "asset"
 authors = ["Maurice Weber"]
 entry = "main.sw"
 license = "Apache-2.0"
 
 [dependencies]
-ns_lib = { path = "../ns_lib" }

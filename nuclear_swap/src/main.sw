@@ -1,6 +1,6 @@
 contract;
 
-use ns_lib::abs; // needs to be added
+use math_lib::abs; // needs to be added
 
 use std::{
     address::*,
@@ -422,8 +422,7 @@ fn _burn(amount: u64) {
     burn(amount);
 }
 
-fn _getYD(i: u64, xp: [u64;
-2], d: u64) -> u64 {
+fn _getYD(i: u64, xp: [u64; 2], d: u64) -> u64 {
     // XXX -> N = 2
     let N = 2;
     // let N: u64 = storage.N;
