@@ -7,15 +7,15 @@ use std::{
     assert::assert,
     block::*,
     chain::auth::*,
-    contract_id::ContractId,
     context::{*, call_frames::*},
+    contract_id::ContractId,
     hash::*,
     logging::log,
+    math::*,
     result::*,
     revert::revert,
-    token::*,
     storage::*,
-    math::*
+    token::*,
 };
 
 storage {
@@ -29,11 +29,11 @@ pub struct RemoveLiquidityReturn {
 }
 
 pub struct Logger {
-    amount: u64
+    amount: u64,
 }
 
 pub struct SenderLog {
-    sender: Address
+    sender: Address,
 }
 
 // Token ID of Ether
@@ -96,10 +96,12 @@ impl NuclearSwap for Contract {
         let key = key_deposits(sender, msg_asset_id().into());
         let total_amount = get::<u64>(key) + msg_amount();
 
-        log(SenderLog {sender: sender});
+        log(SenderLog {
+            sender: sender
+        });
         log(msg_asset_id());
 
-        log(Logger{
+        log(Logger {
             amount: total_amount
         });
 
@@ -139,55 +141,117 @@ impl NuclearSwap for Contract {
         // assert(i != j);
         let i = 0;
         let j = 1;
-        // remove i and j 
-
-        assert(msg_asset_id().into() == ETH_ID || msg_asset_id().into() == TOKEN_ID);
+        // remove i and j
 
         let asset_id = msg_asset_id().into();
         let forwarded_amount = msg_amount();
         let sender = get_msg_sender_address_or_panic();
+        let mut dy: u64 = 0;
 
-        // TO DO: IERC20(tokens[i]).transferFrom(msg.sender, address(this), dx);
+        assert(msg_asset_id().into() == ETH_ID || msg_asset_id().into() == TOKEN_ID);
+        if msg_asset_id().into() == ETH_ID {
+            // Getting current reserves of both tokens
+            let current_reserve_x = get_current_reserve(ETH_ID);
+            let current_reserve_y = get_current_reserve(TOKEN_ID);
 
-        // Getting current reserves of both tokens
-        let current_reserve_x = get_current_reserve(ETH_ID);
-        let current_reserve_y = get_current_reserve(TOKEN_ID);
+            log(Logger {
+                amount: current_reserve_x
+            });
+            log(Logger {
+                amount: current_reserve_y
+            });
 
-        log(Logger{amount: current_reserve_x});
-        log(Logger{amount: current_reserve_y});
+            // Get new token_in amount:
+            assert(dx >= 0);
+            let new_reserve_x = current_reserve_x + dx;
 
-        // Get new token_in amount:
-        assert(dx >= 0);
-        let new_reserve_x = current_reserve_x + dx;
+            // Get current balances and store in xp:
+            let xp: [u64;
+            2] = [current_reserve_x, current_reserve_y];
 
-        // Get current balances and store in xp:
-        let xp: [u64; 2] = [current_reserve_x, current_reserve_y];
+            // Computing new token_out amount:
+            let new_reserve_y: u64 = _getY(i, j, new_reserve_x, xp);
 
-        // Computing new token_out amount:
-        let new_reserve_y: u64 = _getY(i, j, new_reserve_x, xp);
+            // Computing delta token_out:
+            // y0 must be >= y1, since x has increased
+            // -1 to round down
+            dy = (current_reserve_y - new_reserve_y - 1);
 
-        // Computing delta token_out:
-        // y0 must be >= y1, since x has increased
-        // -1 to round down
-        let mut dy: u64 = (current_reserve_y - new_reserve_y - 1);
+            // Subtract fee from dy
+            let fee: u64 = (dy * 300) / 1000000;
+            dy = dy - fee;
+            assert(dy >= minDy);
 
-        // Subtract fee from dy
-        //let fee: u64 = (dy * SWAP_FEE) / FEE_DENOMINATOR;
-        //dy = dy - fee;
-        assert(dy >= minDy);
+            add_reserve(ETH_ID, dx);
+            remove_reserve(TOKEN_ID, dy);
 
-        add_reserve(ETH_ID, dx);
-        remove_reserve(TOKEN_ID, dy);
-        // TO DO: IERC20(tokens[j]).transfer(msg.sender, dy);
+            // Getting new reserves of both tokens
+            let new_reserve_x = get_current_reserve(ETH_ID);
+            let new_reserve_y = get_current_reserve(TOKEN_ID);
 
-        // Getting new reserves of both tokens
-        let new_reserve_x = get_current_reserve(ETH_ID);
-        let new_reserve_y = get_current_reserve(TOKEN_ID);
+            log(Logger {
+                amount: new_reserve_x
+            });
+            log(Logger {
+                amount: new_reserve_y
+            });
+            log(Logger {
+                amount: dy
+            });
 
-        log(Logger{amount: new_reserve_x});
-        log(Logger{amount: new_reserve_y});
-        log(Logger{amount: dy});
+            // dy
+        } else if msg_asset_id().into() == TOKEN_ID {
+            // Getting current reserves of both tokens
+            let current_reserve_x = get_current_reserve(TOKEN_ID);
+            let current_reserve_y = get_current_reserve(ETH_ID);
 
+            log(Logger {
+                amount: current_reserve_x
+            });
+            log(Logger {
+                amount: current_reserve_y
+            });
+
+            // Get new token_in amount:
+            assert(dx >= 0);
+            let new_reserve_x = current_reserve_x + dx;
+
+            // Get current balances and store in xp:
+            let xp: [u64;
+            2] = [current_reserve_x, current_reserve_y];
+
+            // Computing new token_out amount:
+            let new_reserve_y: u64 = _getY(i, j, new_reserve_x, xp);
+
+            // Computing delta token_out:
+            // y0 must be >= y1, since x has increased
+            // -1 to round down
+            dy = (current_reserve_y - new_reserve_y - 1);
+
+            // Subtract fee from dy
+            let fee: u64 = (dy * 300) / 1000000;
+            dy = dy - fee;
+            assert(dy >= minDy);
+
+            add_reserve(TOKEN_ID, dx);
+            remove_reserve(ETH_ID, dy);
+
+            // Getting new reserves of both tokens
+            let new_reserve_x = get_current_reserve(TOKEN_ID);
+            let new_reserve_y = get_current_reserve(ETH_ID);
+
+            log(Logger {
+                amount: new_reserve_x
+            });
+            log(Logger {
+                amount: new_reserve_y
+            });
+            log(Logger {
+                amount: dy
+            });
+
+            // dy
+        }
         dy
     }
 
@@ -196,7 +260,7 @@ impl NuclearSwap for Contract {
         assert(deadline > height());
         assert(msg_asset_id().into() == ETH_ID || msg_asset_id().into() == TOKEN_ID);
 
-        let FEE_DENOMINATOR = exp(10,6);
+        let FEE_DENOMINATOR = exp(10, 6);
         let LIQUIDITY_FEE = (SWAP_FEE * N) / (5 * (N - 1));
 
         let sender = get_msg_sender_address_or_panic();
@@ -221,7 +285,8 @@ impl NuclearSwap for Contract {
             // let liquidity_minted = (current_eth_amount * total_liquidity) / current_eth_reserve;
 
             // Get current balances and store in xp:
-            let current_reserves: [u64; 2] = [current_eth_reserve, current_token_reserve];
+            let current_reserves: [u64;
+            2] = [current_eth_reserve, current_token_reserve];
 
             // Calculating D, sum of balances in a perfectly balanced pool
             let current_d = _getD(current_reserves);
@@ -236,7 +301,8 @@ impl NuclearSwap for Contract {
                 // Calculating ideal LP token amount to mint and send:
                 let new_eth_reserve = get_current_reserve(ETH_ID);
                 let new_token_reserve = get_current_reserve(TOKEN_ID);
-                let new_reserves: [u64; 2] = [new_eth_reserve, new_token_reserve];
+                let new_reserves: [u64;
+                2] = [new_eth_reserve, new_token_reserve];
 
                 let new_d = _getD(new_reserves); // Calculating D, sum of balances in a perfectly balanced pool
 
@@ -248,7 +314,8 @@ impl NuclearSwap for Contract {
                 let diff_token: u64 = abs(new_token_reserve, idealBalance_token);
                 let net_new_token_reserve: u64 = (LIQUIDITY_FEE * diff_token) / FEE_DENOMINATOR;
 
-                let net_new_reserves: [u64; 2] = [net_new_eth_reserve, net_new_token_reserve];
+                let net_new_reserves: [u64;
+                2] = [net_new_eth_reserve, net_new_token_reserve];
                 let net_new_d = _getD(net_new_reserves);
 
                 let liquidity_to_mint = ((net_new_d - current_d) * total_liquidity) / current_d;
@@ -289,8 +356,12 @@ impl NuclearSwap for Contract {
             transfer_to_output(initial_liquidity, contract_id(), sender);
             minted = initial_liquidity;
 
-            log(Logger{amount: get_current_reserve(ETH_ID)});
-            log(Logger{amount: get_current_reserve(TOKEN_ID)});
+            log(Logger {
+                amount: get_current_reserve(ETH_ID)
+            });
+            log(Logger {
+                amount: get_current_reserve(TOKEN_ID)
+            });
         }
 
         // Clear user contract balances after finishing add / create liquidity
@@ -352,7 +423,8 @@ fn _burn(amount: u64) {
     burn(amount);
 }
 
-fn _getYD(i: u64, xp: [u64; 2], d: u64) -> u64 {
+fn _getYD(i: u64, xp: [u64;
+2], d: u64) -> u64 {
     // XXX -> N = 2
     let N = 2;
     // let N: u64 = storage.N;
@@ -392,7 +464,8 @@ fn _getYD(i: u64, xp: [u64; 2], d: u64) -> u64 {
     y
 }
 
-fn _getY(i: u64, j: u64, x: u64, xp: [u64; 2]) -> u64 {
+fn _getY(i: u64, j: u64, x: u64, xp: [u64;
+2]) -> u64 {
     // let A: u64 = (1000 * (N**(N-1)));
     // following A needs to be replaced by commented A
     // XXX -> N = 2 should be dynamic
@@ -439,7 +512,8 @@ fn _getY(i: u64, j: u64, x: u64, xp: [u64; 2]) -> u64 {
     y // revert("y didn't converge");
 }
 
-fn _getD(xp: [u64; 2]) -> u64 {
+fn _getD(xp: [u64;
+2]) -> u64 {
     // N: Number of tokens
     // A: Amplification coefficient multiplied by N^(N-1)
     let current_reserve_x = get_current_reserve(ETH_ID);
@@ -451,7 +525,8 @@ fn _getD(xp: [u64; 2]) -> u64 {
     let A: u64 = (1000 * (exp(N, N - 1)));
     let a: u64 = A * N;
     let mut i = 0;
-    let xp: [u64; 2] = [current_reserve_x, current_reserve_y];
+    let xp: [u64;
+    2] = [current_reserve_x, current_reserve_y];
     let mut s: u64 = xp[0] + xp[1];
     /*
     while i < N {
