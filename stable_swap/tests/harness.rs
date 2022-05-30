@@ -9,7 +9,7 @@ abigen!(TestToken,"../token_contract/out/debug/token_contract-abi.json");
 
 struct Metadata {
     swap_contract_instance: NuclearSwap,
-    asset: Option<TestToken>,
+    asset: TestToken,
     wallet: LocalWallet,
 }
 
@@ -42,19 +42,19 @@ async fn get_contract_instance() -> (Metadata, Metadata, Metadata, ContractId, C
 
     let deployer = Metadata {
         swap_contract_instance: NuclearSwap::new(swap_contract_id.to_string(), deployer_wallet.clone()),
-        asset: Some(TestToken::new(token_contract_id.to_string(), deployer_wallet.clone())),
+        asset: TestToken::new(token_contract_id.to_string(), deployer_wallet.clone()),
         wallet: deployer_wallet,
     };
 
     let lp = Metadata {
         swap_contract_instance: NuclearSwap::new(swap_contract_id.to_string(), lp_wallet.clone()),
-        asset: Some(TestToken::new(token_contract_id.to_string(), lp_wallet.clone())),
+        asset: TestToken::new(token_contract_id.to_string(), lp_wallet.clone()),
         wallet: lp_wallet,
     };
 
     let swapper = Metadata {
         swap_contract_instance: NuclearSwap::new(swap_contract_id.to_string(), swapper_wallet.clone()),
-        asset: Some(TestToken::new(token_contract_id.to_string(), swapper_wallet.clone())),
+        asset: TestToken::new(token_contract_id.to_string(), swapper_wallet.clone()),
         wallet: swapper_wallet,
     };
 
@@ -63,19 +63,72 @@ async fn get_contract_instance() -> (Metadata, Metadata, Metadata, ContractId, C
     (deployer, lp, swapper, swap_contract_id, token_contract_id)
 }
 
-// #[tokio::test]
-// async fn can_deposit() {
-//     let (_swap_contract_instance, _swap_contract_id, _token_contract_instance, _token_contract_id) = get_contract_instance().await;
+#[tokio::test]
+async fn can_deposit() {
+    let  (deployer, lp, swapper, swap_contract_id, token_contract_id) = get_contract_instance().await;
 
-//     _swap_contract_instance
-//         .deposit()
-//         .call_params(CallParameters::new(Some(1000), None))
-//         .call()
-//         .await
-//         .unwrap();
+    let depo_native = deployer.swap_contract_instance
+    .deposit()
+    .call_params(CallParameters::new(Some(1000), Some(NATIVE_ASSET_ID)))
+    .call()
+    .await
+    .unwrap();
+    println!("Deposited: {:?}", depo_native.value);
+    assert_eq!(depo_native.value, 1000);
 
-//     // Now you have an instance of your contract you can use to test each function
-// }
+    // Mint some alt tokens
+    // deployer.asset.mint_coins(1000000).call().await.unwrap().value;
+
+    // // Check the balance of the contract of its own asset
+    // let result = _token_contract_instance
+    //     .get_balance(_token_contract_id.clone(), _token_contract_id.clone())
+    //     .call()
+    //     .await
+    //     .unwrap();
+    // assert_eq!(result.value, 10000);
+
+    // // Transfer some alt tokens to the wallet
+    // let address = wallet.address();
+    // let _t = _token_contract_instance
+    //     .transfer_coins_to_output(500, _token_contract_id.clone(), address.clone())
+    //     .append_variable_outputs(1)
+    //     .call()
+    //     .await
+    //     .unwrap();
+
+    // // Check the balance of the contract of its own asset
+    // let result = _token_contract_instance
+    //     .get_balance(_token_contract_id.clone(), _token_contract_id.clone())
+    //     .call()
+    //     .await
+    //     .unwrap();
+    // assert_eq!(result.value, 10000 - 500);
+
+    // let alt_token_id = AssetId::from(*_token_contract_id.clone());
+    // let lp_token_id = AssetId::from(*_swap_contract_id.clone());
+    
+    // // Inspect the wallet for alt tokens
+    // let coins = wallet
+    //     .get_spendable_coins(&alt_token_id, 500)
+    //     .await
+    //     .unwrap();
+    // assert_eq!(coins[0].amount, 500u64.into());
+
+    // let depo_token = deployer.swap_contract_instance
+    // .deposit()
+    // .call_params(CallParameters::new(Some(1000), Some(AssetId::from(*token_contract_id))))
+    // .call()
+    // .await
+    // .unwrap();
+    // println!("Deposited: {:?}", depo_token.value);
+    // assert_eq!(depo_token.value, 1000);
+
+    // let depo = deployer.swap_contract_instance
+    // .get_balance(NATIVE_ASSET_ID)
+    // .call()
+    // .await
+    // .unwrap();
+}
 
 // #[tokio::test]
 // async fn can_get_balance() {
