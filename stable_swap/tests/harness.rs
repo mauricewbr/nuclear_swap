@@ -429,6 +429,7 @@ async fn can_swap() {
 
     let alt_token_id = AssetId::from(*_token_contract_id.clone());
     let lp_token_id = AssetId::from(*_swap_contract_id.clone());
+    let native_token_id = AssetId::from(*NATIVE_ASSET_ID);
     // Native asset id
     let native_asset_id = ContractId::new(*NATIVE_ASSET_ID);
     // Alt asset id
@@ -532,7 +533,7 @@ async fn can_swap() {
         .swap(50, 5)
         .call_params(CallParameters::new(
             Some(50),
-            Some(alt_token_id.clone()),
+            Some(native_token_id.clone()),
         ))
         .append_variable_outputs(1)
         .call()
@@ -540,7 +541,7 @@ async fn can_swap() {
         .unwrap();
     assert!(result.value > 0);
     println!("Result is {}", result.value);
-    println!("{:?}", result.logs);
+    println!("Token X and Token Y BEFORE and AFTER the swap: {:?}", result.logs);
 
     let balances = _swap_contract_instance
         .get_balances(_swap_contract_id, _swap_contract_id)

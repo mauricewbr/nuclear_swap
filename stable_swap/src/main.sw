@@ -186,6 +186,7 @@ impl NuclearSwap for Contract {
 
         log(Logger{amount: new_reserve_x});
         log(Logger{amount: new_reserve_y});
+        log(Logger{amount: dy});
 
         dy
     }
@@ -404,6 +405,7 @@ fn _getY(i: u64, j: u64, x: u64, xp: [u64; 2]) -> u64 {
     let mut s: u64 = 0;
     let mut _x: u64 = 0;
     let mut counter_i: u64 = 0;
+    // XXX -> remove while
     while counter_i < N {
         if counter_i == i {
             _x = x;
@@ -450,11 +452,13 @@ fn _getD(xp: [u64; 2]) -> u64 {
     let a: u64 = A * N;
     let mut i = 0;
     let xp: [u64; 2] = [current_reserve_x, current_reserve_y];
-    let mut s: u64 = xp[0];
+    let mut s: u64 = xp[0] + xp[1];
+    /*
     while i < N {
         s = s + xp[i];
         i = i + 1;
     }
+    */
 
     let mut d: u64 = s;
     let mut i = 0;
