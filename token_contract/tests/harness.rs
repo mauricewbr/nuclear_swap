@@ -1,22 +1,36 @@
-use fuel_tx::ContractId;
-use fuels_abigen_macro::abigen;
-use fuels::prelude::*;
-use fuels::test_helpers;
+use fuels::{prelude::*, tx::ContractId};
 
 // Load abi from json
 abigen!(MyContract, "out/debug/token_contract-abi.json");
 
 async fn get_contract_instance() -> (MyContract, ContractId) {
     // Launch a local network and deploy the contract
-    let wallet = launch_provider_and_get_wallet().await;
+    let mut wallets = launch_custom_provider_and_get_wallets(
+        WalletsConfig::new(
+            Some(1),             /* Single wallet */
+            Some(1),             /* Single coin (UTXO) */
+            Some(1_000_000_000), /* Amount per coin */
+        ),
+        None,
+        None,
+    )
+    .await;
+    let wallet = wallets.pop().unwrap();
 
-    let id = Contract::deploy("./out/debug/token_contract.bin", &wallet, TxParameters::default())
-        .await
-        .unwrap();
+    let id = Contract::deploy(
+        "./out/debug/token_contract.bin",
+        &wallet,
+        TxParameters::default(),
+        StorageConfiguration::with_storage_path(Some(
+            "./out/debug/token_contract-storage_slots.json".to_string(),
+        )),
+    )
+    .await
+    .unwrap();
 
-    let instance = MyContract::new(id.to_string(), wallet);
+    let instance = MyContract::new(id.clone(), wallet);
 
-    (instance, id)
+    (instance, id.into())
 }
 
 #[tokio::test]
