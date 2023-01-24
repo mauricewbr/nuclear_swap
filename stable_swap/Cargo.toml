@@ -5,14 +5,15 @@ authors = ["Maurice Weber"]
 edition = "2021"
 license = "Apache-2.0"
 
-[dependencies]
-fuel-gql-client = { version = "0.6", default-features = false }
-fuel-tx = "0.9"
-fuels = "0.13"
-fuels-abigen-macro = "0.13"
+[dev-dependencies]
+fuels = { version = "0.34", features = ["fuel-core-lib"] }
 tokio = { version = "1.12", features = ["rt", "macros"] }
 
 [[test]]
 harness = true
 name = "integration_tests"
 path = "tests/harness.rs"
+
+[dependencies]
+rand = "0.8.5"
+more-asserts = "0.3.1"
